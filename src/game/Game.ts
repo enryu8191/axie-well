@@ -84,12 +84,6 @@ export class Game extends Phaser.Scene {
     super("Game");
   }
 
-  preload(): void {
-    for (const st of STAGES) {
-      this.load.image(stageKey(st.id), st.sprite);
-    }
-  }
-
   create(): void {
     this.ignoreUntil = this.time.now + INPUT_GRACE_MS;
     this.drawWorld();
@@ -100,6 +94,13 @@ export class Game extends Phaser.Scene {
     this.bindPhysics();
     this.syncNextDropVisuals();
     this.preview.setPosition(this.previewX, DROP_Y);
+    if (typeof location !== "undefined" && new URLSearchParams(location.search).has("preview")) {
+      this.spawn(1, WELL_CX - 90, 720, 0, 0, 0);
+      this.spawn(2, WELL_CX + 90, 760, 0, 0, 0);
+      this.spawn(3, WELL_CX - 40, 900, 0, 0, 0);
+      this.spawn(4, WELL_CX + 70, 980, 0, 0, 0);
+      this.canDrop = true;
+    }
   }
 
   update(_t: number, delta: number): void {

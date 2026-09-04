@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { Boot } from "./game/Boot";
 import { Game } from "./game/Game";
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -10,7 +11,7 @@ const config: Phaser.Types.Core.GameConfig = {
   title: "The Well",
   banner: false,
   antialias: true,
-  scene: Game,
+  scene: [Boot, Game],
   physics: {
     default: "matter",
     matter: {

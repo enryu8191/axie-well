@@ -2,7 +2,7 @@
 
 Greybox for Axie Infinity Vibeathon. One well, one Axie. Drop-merge raise: egg to hatchling to kid to teen to adult. Feed is the drop, not Suika fruit.
 
-Pieces use official 2D starter Axie art from Sky Mavis (`cc-axie-gtk2d`): blossom hatchling, Puffy kid, Pomodoro teen, Buba adult.
+Grown stages are composed with the official [`@axieinfinity/mixer`](https://www.npmjs.com/package/@axieinfinity/mixer) 2D plant combo (same parts, body shape grows: normal → fuzzy → wetdog → sumo). The egg is original feed art.
 
 Portrait well. Canvas is 720x1280. Phaser Scale.FIT + CENTER_BOTH letterboxes on a landscape monitor.
 

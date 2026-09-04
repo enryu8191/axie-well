@@ -12,11 +12,15 @@ export default defineConfig({
     host: true,
     strictPort: true,
   },
+  optimizeDeps: {
+    include: ["@axieinfinity/mixer"],
+  },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
           phaser: ["phaser"],
+          mixer: ["@axieinfinity/mixer"],
         },
       },
     },

@@ -1,15 +1,11 @@
 # Assets
 
-2D starter Axie sprites are cropped from Sky Mavis / Axie Infinity IP:
+Grown Axies are built at runtime with the official 2D mixer:
 
-- Source sheet: [axieinfinity/cc-axie-gtk2d](https://github.com/axieinfinity/cc-axie-gtk2d) `images/starter.png`
-- Characters in the well: blossom, Puffy, Pomodoro, Buba
-- Use is for Axie Vibeathon (and other Sky Mavis-approved programs), not an open-source dump
+- Package: [`@axieinfinity/mixer`](https://www.npmjs.com/package/@axieinfinity/mixer) 1.4.9
+- Part textures: `https://axiecdn.axieinfinity.com/mixer-stuffs/v6/`
+- Combo: plant-class parts (eyes 02, horn 04, ears 06, tail 08, mouth 10, back 12), color `plant-00`
+- Bodies by stage: hatchling `body-normal`, kid `body-fuzzy`, teen `body-wetdog` + lv2 parts, adult `body-sumo` + lv2 parts
+- Use is for Axie Vibeathon and other Sky Mavis-approved programs
 
-The plant-class egg is original feed art drawn to sit next to those 2D starters.
-
-Regenerate crops:
-
-```
-python scripts/prep-axie-sprites.py
-```
+The plant-class egg is original feed art. Mixer part PNGs are loaded from Sky Mavis CDN, not vendored.

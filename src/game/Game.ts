@@ -3,9 +3,8 @@ import {
   ADULT_BURST_SCORE,
   MAX_STAGE,
   STAGES,
-  hexCss,
+  stageKey,
   titleCase,
-  type StageDef,
 } from "./stages";
 
 const WIDTH = 720;
@@ -85,9 +84,14 @@ export class Game extends Phaser.Scene {
     super("Game");
   }
 
+  preload(): void {
+    for (const st of STAGES) {
+      this.load.image(stageKey(st.id), st.sprite);
+    }
+  }
+
   create(): void {
     this.ignoreUntil = this.time.now + INPUT_GRACE_MS;
-    this.bakeTextures();
     this.drawWorld();
     this.buildWalls();
     this.buildHud();
@@ -102,7 +106,7 @@ export class Game extends Phaser.Scene {
     const dt = Math.min(delta, 50);
     this.steerPreview(dt);
     this.preview.setPosition(this.previewX, DROP_Y);
-    this.preview.setAlpha(this.over ? 0 : this.canDrop ? 0.72 : 0.28);
+    this.preview.setAlpha(this.over ? 0 : this.canDrop ? 1 : 0.42);
     const pr = STAGES[this.nextDropStage()].radius;
     this.guide.setPosition(this.previewX, DROP_Y + pr * 0.95 + 10);
     this.guide.setSize(Math.max(40, pr * 1.9), Math.max(16, pr * 0.48));
@@ -115,84 +119,9 @@ export class Game extends Phaser.Scene {
     this.refreshHud();
   }
 
-  private bakeTextures(): void {
-    for (const st of STAGES) {
-      this.bakeStage(st);
-    }
-  }
-
-  private bakeStage(st: StageDef): void {
-    const key = `stage-${st.id}`;
-    if (this.textures.exists(key)) this.textures.remove(key);
-    const pad = 10;
-    const size = Math.ceil(st.radius * 2 + pad * 2);
-    const tex = this.textures.createCanvas(key, size, size);
-    if (!tex) return;
-    const ctx = tex.getContext();
-    const cx = size / 2;
-    const r = st.radius;
-
-    ctx.beginPath();
-    ctx.arc(cx, cx, r - 1, 0, Math.PI * 2);
-    ctx.fillStyle = hexCss(st.fill);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(cx - r * 0.22, cx - r * 0.34, r * 0.48, r * 0.32, -0.5, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.58)";
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(cx, cx, r - 2.6, 0, Math.PI * 2);
-    ctx.strokeStyle = hexCss(st.stroke);
-    ctx.lineWidth = Math.max(4.2, r * 0.12);
-    ctx.stroke();
-
-    const eyeRx = Math.max(4.8, r * 0.22);
-    const eyeRy = Math.max(5.8, r * 0.28);
-    const eyeY = cx - r * 0.08;
-    const eyeSpread = r * 0.38;
-    this.drawAxieEye(ctx, cx - eyeSpread, eyeY, eyeRx, eyeRy, st.ink);
-    this.drawAxieEye(ctx, cx + eyeSpread, eyeY, eyeRx, eyeRy, st.ink);
-
-    ctx.beginPath();
-    const smileY = cx + r * 0.3;
-    const smileR = Math.max(5.5, r * 0.26);
-    ctx.arc(cx, smileY - smileR * 0.42, smileR, 0.2 * Math.PI, 0.8 * Math.PI);
-    ctx.strokeStyle = st.ink;
-    ctx.lineWidth = Math.max(1.8, r * 0.07);
-    ctx.lineCap = "round";
-    ctx.stroke();
-
-    tex.refresh();
-  }
-
-  private drawAxieEye(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    rx: number,
-    ry: number,
-    ink: string,
-  ): void {
-    ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "#fffdf6";
-    ctx.fill();
-    ctx.lineWidth = Math.max(1.1, rx * 0.14);
-    ctx.strokeStyle = "rgba(58, 48, 40, 0.22)";
-    ctx.stroke();
-
-    const pr = Math.max(2.1, Math.min(rx, ry) * 0.52);
-    ctx.beginPath();
-    ctx.arc(x, y + ry * 0.1, pr, 0, Math.PI * 2);
-    ctx.fillStyle = ink;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(x - pr * 0.34, y - pr * 0.22, Math.max(0.9, pr * 0.34), 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
+  private fitSprite(img: Phaser.GameObjects.Image, stage: number): void {
+    const fit = STAGES[stage].radius * 2 * 1.28;
+    img.setDisplaySize(fit, fit);
   }
 
   private drawWorld(): void {
@@ -286,9 +215,10 @@ export class Game extends Phaser.Scene {
       .setDepth(8);
 
     this.preview = this.add
-      .image(WELL_CX, DROP_Y, "stage-0")
-      .setAlpha(0.72)
+      .image(WELL_CX, DROP_Y, stageKey(0))
+      .setAlpha(0.92)
       .setDepth(20);
+    this.fitSprite(this.preview, 0);
   }
 
   private buildWalls(): void {
@@ -376,8 +306,8 @@ export class Game extends Phaser.Scene {
     g.fillCircle(458, pillY + 12, 18);
     g.lineStyle(4, 0xd9c4a0, 1);
     g.strokeCircle(458, pillY + 12, 18);
-    this.hudNext = this.add.image(458, pillY + 12, "stage-0").setDepth(30);
-    this.fitHudNext(0);
+    this.hudNext = this.add.image(458, pillY + 12, stageKey(0)).setDepth(30);
+    this.fitHudNext();
 
     this.addRestartButton(624, pillY, 30, 152, 58);
 
@@ -408,9 +338,8 @@ export class Game extends Phaser.Scene {
     g.strokeRoundedRect(cx - w / 2, cy - h / 2, w, h, h / 2);
   }
 
-  private fitHudNext(stage: number): void {
-    const fit = 28;
-    this.hudNext.setScale(fit / (STAGES[stage].radius * 2));
+  private fitHudNext(): void {
+    this.hudNext.setDisplaySize(34, 34);
   }
 
   private buildOverlay(): void {
@@ -533,10 +462,11 @@ export class Game extends Phaser.Scene {
 
   private syncNextDropVisuals(): void {
     const stage = this.nextDropStage();
-    const key = `stage-${stage}`;
+    const key = stageKey(stage);
     this.preview.setTexture(key);
+    this.fitSprite(this.preview, stage);
     this.hudNext.setTexture(key);
-    this.fitHudNext(stage);
+    this.fitHudNext();
     this.previewX = this.clampX(this.previewX, stage);
   }
 
@@ -593,7 +523,7 @@ export class Game extends Phaser.Scene {
     spin: number,
   ): Piece {
     const st = STAGES[stage];
-    const img = this.matter.add.image(x, y, `stage-${stage}`, undefined, {
+    const img = this.matter.add.image(x, y, stageKey(stage), undefined, {
       shape: { type: "circle", radius: st.radius },
       restitution: 0.08,
       friction: 0.38,
@@ -603,6 +533,7 @@ export class Game extends Phaser.Scene {
       slop: 0.05,
       label: "piece",
     });
+    this.fitSprite(img, stage);
     img.setDepth(10);
     img.setSleepThreshold(16);
     img.setVelocity(vx, vy);

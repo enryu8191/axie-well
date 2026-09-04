@@ -4,6 +4,7 @@ export interface StageDef {
   id: number;
   name: string;
   label: string;
+  sprite: string;
   radius: number;
   fill: number;
   stroke: number;
@@ -16,50 +17,55 @@ export const STAGES: readonly StageDef[] = [
     id: 0,
     name: "egg",
     label: "E",
-    radius: 22,
-    fill: 0xf7ecd8,
-    stroke: 0xd9c4a0,
-    ink: "#5a4a38",
+    sprite: "axie/egg.png",
+    radius: 24,
+    fill: 0xe8e6a0,
+    stroke: 0x7dae4a,
+    ink: "#3a4a28",
     score: 0,
   },
   {
     id: 1,
     name: "hatchling",
     label: "H",
-    radius: 32,
-    fill: 0xb8e8c8,
-    stroke: 0x7eb892,
-    ink: "#2d4a38",
+    sprite: "axie/blossom.png",
+    radius: 34,
+    fill: 0xf3efe0,
+    stroke: 0xe8a0b4,
+    ink: "#5a4a38",
     score: 10,
   },
   {
     id: 2,
     name: "kid",
     label: "K",
-    radius: 44,
-    fill: 0xa8d8f0,
-    stroke: 0x6ea8c8,
-    ink: "#2a4a5c",
+    sprite: "axie/puffy.png",
+    radius: 46,
+    fill: 0x6ed0d4,
+    stroke: 0x3aa0b8,
+    ink: "#1a4a5c",
     score: 30,
   },
   {
     id: 3,
     name: "teen",
     label: "T",
-    radius: 58,
-    fill: 0xf0d48a,
-    stroke: 0xd4b45a,
-    ink: "#5a4a18",
+    sprite: "axie/pomodoro.png",
+    radius: 60,
+    fill: 0xf0b45a,
+    stroke: 0xd48a28,
+    ink: "#5a3a10",
     score: 90,
   },
   {
     id: 4,
     name: "adult",
     label: "A",
-    radius: 76,
-    fill: 0xf0b8c8,
-    stroke: 0xd48aa0,
-    ink: "#5c2a3a",
+    sprite: "axie/buba.png",
+    radius: 78,
+    fill: 0x8ed67a,
+    stroke: 0x5eaa52,
+    ink: "#2d4a38",
     score: 270,
   },
 ];
@@ -67,8 +73,8 @@ export const STAGES: readonly StageDef[] = [
 export const ADULT_BURST_SCORE = 800;
 export const MAX_STAGE = STAGES.length - 1;
 
-export function hexCss(n: number): string {
-  return `#${n.toString(16).padStart(6, "0")}`;
+export function stageKey(id: number): string {
+  return `stage-${id}`;
 }
 
 export function titleCase(name: string): string {

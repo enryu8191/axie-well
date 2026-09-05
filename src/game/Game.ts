@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { readPreferences, savePreferences } from "./storage";
 import {
   ADULT_BURST_SCORE,
   MAX_STAGE,
@@ -42,7 +43,8 @@ type MatterBody = {
 interface Piece {
   id: number;
   stage: number;
-  img: Phaser.Physics.Matter.Image;
+  img: Phaser.GameObjects.Image;
+  physics: Phaser.Physics.Matter.Image;
   merging: boolean;
   born: number;
 }
@@ -65,6 +67,14 @@ export class Game extends Phaser.Scene {
   private ignoreUntil = 0;
   private audio?: AudioContext;
   private restarting = false;
+  private started = false;
+  private paused = false;
+  private preferences = readPreferences();
+  private aim!: Phaser.GameObjects.Graphics;
+  private danger!: Phaser.GameObjects.Text;
+  private growthIcons: Phaser.GameObjects.Image[] = [];
+  private lastUiState = '';
+  private pointerArmed = false;
 
   private preview!: Phaser.GameObjects.Image;
   private guide!: Phaser.GameObjects.Ellipse;
@@ -84,7 +94,27 @@ export class Game extends Phaser.Scene {
     super("Game");
   }
 
-  create(): void {
+  create(data: { playing?: boolean } = {}): void {
+    this.pieces = new Map();
+    this.nextId = 1;
+    this.score = 0;
+    this.bestReached = 0;
+    this.madeAdult = false;
+    this.chain = 0;
+    this.lastMergeAt = -99999;
+    this.canDrop = true;
+    this.over = false;
+    this.currentDrop = null;
+    this.settleFrames = 0;
+    this.overflowMs = 0;
+    this.previewX = WELL_CX;
+    this.mergeQueue = [];
+    this.restarting = false;
+    this.paused = false;
+    this.pointerArmed = false;
+    this.started = Boolean(data.playing);
+    this.growthIcons = [];
+    this.lastUiState = '';
     this.ignoreUntil = this.time.now + INPUT_GRACE_MS;
     this.drawWorld();
     this.buildWalls();
@@ -94,7 +124,11 @@ export class Game extends Phaser.Scene {
     this.bindPhysics();
     this.syncNextDropVisuals();
     this.preview.setPosition(this.previewX, DROP_Y);
-    if (typeof location !== "undefined" && new URLSearchParams(location.search).has("preview")) {
+    this.connectShell();
+    if (this.started) this.matter.world.resume();
+    else this.matter.world.pause();
+    this.refreshHud();
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has("preview")) {
       this.spawn(1, WELL_CX - 90, 720, 0, 0, 0);
       this.spawn(2, WELL_CX + 90, 760, 0, 0, 0);
       this.spawn(3, WELL_CX - 40, 900, 0, 0, 0);
@@ -105,6 +139,10 @@ export class Game extends Phaser.Scene {
 
   update(_t: number, delta: number): void {
     const dt = Math.min(delta, 50);
+    for (const p of this.pieces.values()) {
+      p.img.setPosition(p.physics.x, p.physics.y).setRotation(p.physics.rotation);
+    }
+    if (!this.started || this.paused) return;
     this.steerPreview(dt);
     this.preview.setPosition(this.previewX, DROP_Y);
     this.preview.setAlpha(this.over ? 0 : this.canDrop ? 1 : 0.42);
@@ -113,6 +151,11 @@ export class Game extends Phaser.Scene {
     this.guide.setSize(Math.max(40, pr * 1.9), Math.max(16, pr * 0.48));
     this.guide.setAlpha(this.over ? 0 : this.canDrop ? 0.5 : 0.22);
 
+    this.aim.clear();
+    if (this.canDrop && !this.over) {
+      this.aim.lineStyle(2, 0x6b8d63, 0.25);
+      for (let y = DROP_Y + 48; y < FLOOR_Y - 30; y += 22) this.aim.lineBetween(this.previewX, y, this.previewX, y + 8);
+    }
     if (this.over) return;
 
     this.tickSettle();
@@ -220,6 +263,10 @@ export class Game extends Phaser.Scene {
       .setAlpha(0.92)
       .setDepth(20);
     this.fitSprite(this.preview, 0);
+    this.aim = this.add.graphics().setDepth(5);
+    this.danger = this.add.text(WELL_CX, KILL_Y + 28, '', {
+      fontFamily: FONT_UI, fontSize: '22px', color: '#a43f30', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(25);
   }
 
   private buildWalls(): void {
@@ -242,9 +289,9 @@ export class Game extends Phaser.Scene {
     const g = this.add.graphics().setDepth(29);
 
     this.add
-      .text(WELL_CX, 32, "The Well", {
+      .text(WELL_CX, 32, "THE WELL  /  AXIE MERGE", {
         fontFamily: FONT_DISPLAY,
-        fontSize: "36px",
+        fontSize: "28px",
         color: INK,
         fontStyle: "700",
         stroke: "#fff6e8",
@@ -312,8 +359,14 @@ export class Game extends Phaser.Scene {
 
     this.addRestartButton(624, pillY, 30, 152, 58);
 
+    STAGES.forEach((st, i) => {
+      const x = 136 + i * 112;
+      this.growthIcons.push(this.add.image(x, 1190, stageKey(i)).setDisplaySize(50, 50).setDepth(30).setAlpha(i === 0 ? 1 : 0.35));
+      this.add.text(x, 1220, titleCase(st.name), { fontFamily: FONT_UI, fontSize: '15px', color: INK }).setOrigin(0.5).setDepth(30);
+      if (i < MAX_STAGE) this.add.text(x + 56, 1190, '›', { fontFamily: FONT_UI, fontSize: '26px', color: MUTE }).setOrigin(0.5).setDepth(30);
+    });
     this.add
-      .text(WELL_CX, HEIGHT - 26, "drag  ·  tap to drop  ·  R restart", {
+      .text(WELL_CX, HEIGHT - 26, "aim & release  ·  Space drop  ·  P pause", {
         fontFamily: FONT_UI,
         fontSize: "18px",
         color: INK,
@@ -405,10 +458,7 @@ export class Game extends Phaser.Scene {
       .setOrigin(0.5);
     const c = this.add.container(x, y, [bg, txt]).setDepth(depth);
     c.setSize(w, h);
-    c.setInteractive(
-      new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    c.setInteractive({ useHandCursor: true });
     c.setData("ui", "restart");
     c.on("pointerover", () => paint(0x7ec86a));
     c.on("pointerout", () => paint(0x8ed67a));
@@ -419,23 +469,35 @@ export class Game extends Phaser.Scene {
   private bindInput(): void {
     const kb = this.input.keyboard;
     if (kb) {
-      kb.addCapture("SPACE,LEFT,RIGHT,A,D,R");
+      kb.addCapture("SPACE,LEFT,RIGHT,A,D,R,P,M,ENTER");
       kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
       this.leftKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
       this.rightKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
       this.aKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.A);
       this.dKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-      kb.on("keydown-R", () => this.restart());
+      kb.on("keydown-R", () => { if (this.started) this.restart(); });
+      kb.on("keydown-P", () => this.togglePause());
+      kb.on("keydown-M", () => this.toggleMute());
+      kb.on("keydown-ENTER", () => { if (!this.started) this.begin(); });
       kb.on("keydown-SPACE", () => this.tryDrop());
     }
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
+      document.getElementById('game')?.focus({ preventScroll: true });
       if (p.button !== 0 && p.button !== -1) return;
-      if (this.restarting) return;
+      if (this.restarting || !this.started || this.paused) return;
       const hits = this.input.hitTestPointer(p);
       if (hits.some((o) => o.getData("ui") === "restart")) return;
-      if (this.over) return;
+      if (this.over || p.worldY < WALL_TOP || p.worldY > FLOOR_Y) return;
+      this.previewX = this.clampX(p.worldX, this.nextDropStage());
+      this.pointerArmed = true;
+    });
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!this.pointerArmed) return;
+      this.pointerArmed = false;
+      this.previewX = this.clampX(p.worldX, this.nextDropStage());
       this.tryDrop();
     });
+    this.input.on('pointerupoutside', () => { this.pointerArmed = false; });
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
       if (this.keyHeld()) return;
       this.previewX = this.clampX(p.worldX, this.nextDropStage());
@@ -480,10 +542,7 @@ export class Game extends Phaser.Scene {
       this.previewX = this.clampX(this.previewX + dir * PREVIEW_SPEED * (dt / 1000), stage);
       return;
     }
-    const p = this.input.activePointer;
-    if (p && (p.x !== 0 || p.y !== 0)) {
-      this.previewX = this.clampX(p.worldX, stage);
-    }
+
   }
 
   private clampX(x: number, stage: number): number {
@@ -494,18 +553,20 @@ export class Game extends Phaser.Scene {
   }
 
   private tryDrop(): void {
-    if (this.over || this.restarting) return;
+    if (this.over || this.restarting || !this.started || this.paused) return;
     if (!this.canDrop) return;
     if (this.time.now < this.ignoreUntil) return;
     this.unlockAudio();
     const stage = this.nextDropStage();
     const x = this.clampX(this.previewX, stage);
     const piece = this.spawn(stage, x, DROP_Y, 0, 1.2, 0.04 * (Math.random() - 0.5));
-    piece.img.setScale(1.28, 0.72);
+    const sx = piece.img.scaleX;
+    const sy = piece.img.scaleY;
+    piece.img.setScale(sx * 1.2, sy * 0.8);
     this.tweens.add({
       targets: piece.img,
-      scaleX: 1,
-      scaleY: 1,
+      scaleX: sx,
+      scaleY: sy,
       duration: 180,
       ease: "Back.out",
     });
@@ -524,7 +585,7 @@ export class Game extends Phaser.Scene {
     spin: number,
   ): Piece {
     const st = STAGES[stage];
-    const img = this.matter.add.image(x, y, stageKey(stage), undefined, {
+    const physics = this.matter.add.image(x, y, stageKey(stage), undefined, {
       shape: { type: "circle", radius: st.radius },
       restitution: 0.08,
       friction: 0.38,
@@ -534,14 +595,16 @@ export class Game extends Phaser.Scene {
       slop: 0.05,
       label: "piece",
     });
+    // Physics uses a fixed circle; visual squash never resizes the body.
+    physics.setVisible(false);
+    physics.setSleepThreshold(16);
+    physics.setVelocity(vx, vy);
+    physics.setAngularVelocity(spin);
+    const img = this.add.image(x, y, stageKey(stage)).setDepth(10);
     this.fitSprite(img, stage);
-    img.setDepth(10);
-    img.setSleepThreshold(16);
-    img.setVelocity(vx, vy);
-    img.setAngularVelocity(spin);
     const id = this.nextId++;
-    img.setData("pid", id);
-    const piece: Piece = { id, stage, img, merging: false, born: this.time.now };
+    physics.setData("pid", id);
+    const piece: Piece = { id, stage, img, physics, merging: false, born: this.time.now };
     this.pieces.set(id, piece);
     this.noteStage(stage);
     return piece;
@@ -571,10 +634,10 @@ export class Game extends Phaser.Scene {
   private resolveMerge(a: Piece, b: Piece): void {
     if (!this.pieces.has(a.id) || !this.pieces.has(b.id)) return;
 
-    const x = (a.img.x + b.img.x) * 0.5;
-    const y = (a.img.y + b.img.y) * 0.5;
-    const va = this.vel(a.img);
-    const vb = this.vel(b.img);
+    const x = (a.physics.x + b.physics.x) * 0.5;
+    const y = (a.physics.y + b.physics.y) * 0.5;
+    const va = this.vel(a.physics);
+    const vb = this.vel(b.physics);
     const vx = (va.x + vb.x) * 0.5;
     const vy = (va.y + vb.y) * 0.5;
     const stage = a.stage;
@@ -600,11 +663,13 @@ export class Game extends Phaser.Scene {
     const next = stage + 1;
     this.addScore(STAGES[next].score, x, y);
     const spawned = this.spawn(next, x, y, vx * 0.4, vy * 0.4, 0);
-    spawned.img.setScale(0.2);
+    const sx = spawned.img.scaleX;
+    const sy = spawned.img.scaleY;
+    spawned.img.setScale(sx * 0.55, sy * 0.55);
     this.tweens.add({
       targets: spawned.img,
-      scaleX: 1,
-      scaleY: 1,
+      scaleX: sx,
+      scaleY: sy,
       duration: 220,
       ease: "Back.out",
     });
@@ -621,13 +686,15 @@ export class Game extends Phaser.Scene {
     this.pieces.delete(p.id);
     if (this.currentDrop === p) this.currentDrop = null;
     p.merging = true;
+    this.tweens.killTweensOf(p.img);
     if (p.img.active) p.img.destroy();
+    if (p.physics.active) p.physics.destroy();
   }
 
   private wakePile(): void {
     for (const p of this.pieces.values()) {
       if (p.merging) continue;
-      p.img.setAwake();
+      p.physics.setAwake();
     }
   }
 
@@ -661,12 +728,13 @@ export class Game extends Phaser.Scene {
       if (p.merging) continue;
       if (this.time.now - p.born < 240) continue;
       if (!this.isResting(p)) continue;
-      const top = p.img.y - STAGES[p.stage].radius;
+      const top = p.physics.y - STAGES[p.stage].radius;
       if (top < KILL_Y) {
         overflowing = true;
         break;
       }
     }
+    this.danger.setText(overflowing ? "Too full! Make room…" : "");
     if (overflowing) {
       this.overflowMs += dt;
       if (this.overflowMs >= OVERFLOW_MS) this.gameOver();
@@ -676,7 +744,7 @@ export class Game extends Phaser.Scene {
   }
 
   private isResting(p: Piece): boolean {
-    const body = p.img.body as unknown as MatterBody | undefined;
+    const body = p.physics.body as unknown as MatterBody | undefined;
     if (!body) return false;
     if (body.isSleeping) return true;
     const sp = Math.hypot(body.velocity.x, body.velocity.y);
@@ -724,6 +792,10 @@ export class Game extends Phaser.Scene {
     this.lastMergeAt = now;
     const n = base * this.chain;
     this.score += n;
+    if (this.score > this.preferences.best) {
+      this.preferences.best = this.score;
+      savePreferences(this.preferences);
+    }
     const label = this.chain > 1 ? `+${n} ×${this.chain}` : `+${n}`;
     const t = this.add
       .text(x, y - 10, label, {
@@ -776,7 +848,20 @@ export class Game extends Phaser.Scene {
   private refreshHud(): void {
     this.hudScore.setText(String(this.score));
     const best = this.livingBest();
-    this.hudAxie.setText(best < 0 ? "—" : titleCase(STAGES[best].name));
+    this.hudAxie.setText(best < 0 ? "Egg" : titleCase(STAGES[best].name));
+    this.growthIcons.forEach((icon, i) => icon.setAlpha(i <= this.bestReached ? 1 : 0.35));
+    const state = {
+      score: this.score, best: this.preferences.best, stage: titleCase(STAGES[this.bestReached].name),
+      next: this.nextDropStage(), started: this.started, paused: this.paused, over: this.over,
+      muted: this.preferences.muted, canDrop: this.canDrop,
+      chain: this.time.now - this.lastMergeAt <= CHAIN_WINDOW_MS ? this.chain : 0,
+      pieces: this.pieces.size,
+    };
+    const key = JSON.stringify(state);
+    if (key !== this.lastUiState) {
+      this.lastUiState = key;
+      window.dispatchEvent(new CustomEvent('well:state', { detail: state }));
+    }
   }
 
   private gameOver(): void {
@@ -785,15 +870,81 @@ export class Game extends Phaser.Scene {
     this.canDrop = false;
     this.matter.world.pause();
     const reached = titleCase(STAGES[this.bestReached].name);
-    this.ovTitle.setText(`YOUR AXIE reached ${reached}`);
-    this.ovScore.setText(`Score ${this.score}`);
+    this.ovTitle.setText(`Garden full!\nYour Axie reached ${reached}`);
+    this.ovScore.setText(`Score ${this.score}  ·  Best ${this.preferences.best}`);
     this.overlay.setVisible(true);
+    this.refreshHud();
   }
 
   private restart(): void {
     if (this.restarting) return;
     this.restarting = true;
-    this.scene.restart();
+    this.scene.restart({ playing: true });
+  }
+
+  private begin(): void {
+    this.started = true;
+    this.paused = false;
+    this.ignoreUntil = this.time.now + INPUT_GRACE_MS;
+    this.matter.world.resume();
+    this.unlockAudio();
+    document.getElementById('game')?.focus({ preventScroll: true });
+    this.refreshHud();
+  }
+
+  private togglePause(): void {
+    if (!this.started || this.over) return;
+    this.paused = !this.paused;
+    this.pointerArmed = false;
+    if (this.paused) { this.matter.world.pause(); this.tweens.pauseAll(); }
+    else { this.matter.world.resume(); this.tweens.resumeAll(); this.ignoreUntil = this.time.now + INPUT_GRACE_MS; document.getElementById('game')?.focus({ preventScroll: true }); }
+    this.refreshHud();
+  }
+
+  private toggleMute(): void {
+    this.preferences.muted = !this.preferences.muted;
+    savePreferences(this.preferences);
+    this.refreshHud();
+  }
+
+  private connectShell(): void {
+    const onAction = (event: Event) => {
+      const action = (event as CustomEvent<string>).detail;
+      if (action === 'start') this.begin();
+      if (action === 'restart') this.restart();
+      if (action === 'pause') this.togglePause();
+      if (action === 'mute') this.toggleMute();
+      if (import.meta.env.DEV && new URLSearchParams(location.search).has('qa')) {
+        if (action === 'qa-merge') {
+          this.spawn(0, 330, 900, 0, 0, 0);
+          this.spawn(0, 372, 900, 0, 0, 0);
+        }
+        if (action === 'qa-adult') {
+          this.spawn(3, 300, 930, 0, 0, 0);
+          this.spawn(3, 406, 930, 0, 0, 0);
+        }
+        if (action === 'qa-burst') {
+          this.spawn(4, 285, 930, 0, 0, 0);
+          this.spawn(4, 430, 930, 0, 0, 0);
+        }
+        if (action === 'qa-overflow') {
+          const piece = this.spawn(2, WELL_CX, KILL_Y, 0, 0, 0);
+          piece.physics.setStatic(true);
+        }
+      }
+    };
+    const onBlur = () => { if (this.started && !this.paused && !this.over) this.togglePause(); };
+    window.addEventListener('well:action', onAction);
+    window.addEventListener('blur', onBlur);
+    this.events.once('shutdown', () => {
+      window.removeEventListener('well:action', onAction);
+      window.removeEventListener('blur', onBlur);
+      this.input.keyboard?.removeAllListeners();
+      // Phaser shuts down the world and destroys scene objects before this listener.
+      this.pieces.clear();
+      if (this.audio) void this.audio.close().catch(() => {});
+      this.audio = undefined;
+    });
   }
 
   private unlockAudio(): void {
@@ -806,6 +957,7 @@ export class Game extends Phaser.Scene {
   }
 
   private beep(freq: number): void {
+    if (this.preferences.muted) return;
     try {
       this.unlockAudio();
       const ctx = this.audio;

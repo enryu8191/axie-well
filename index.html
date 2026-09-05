@@ -1,33 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Well</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        background: #b8e4f5;
-        overflow: hidden;
-      }
-      #game {
-        width: 100%;
-        height: 100%;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="game"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#edf1e5" />
+  <meta name="description" content="A tiny garden. A little gravity. Drop, merge, and raise your Axie in The Well." />
+  <title>The Well — Axie Merge Garden</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23d6e8ad'/%3E%3Cellipse cx='32' cy='36' rx='18' ry='22' fill='%2386ad57'/%3E%3Ccircle cx='26' cy='33' r='3' fill='%232f4435'/%3E%3Ccircle cx='38' cy='33' r='3' fill='%232f4435'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="The Well home"><span class="brand-mark">w.</span><span>The Well<small>AN AXIE MERGE GARDEN</small></span></a>
+    <div class="header-note"><span class="live-dot"></span>A little gravity. A lot of growing.</div>
+    <nav aria-label="Game controls"><button id="mute" aria-pressed="false">Sound on</button><button id="pause">Pause</button><button id="help" aria-label="How to play">?</button></nav>
+  </header>
+  <main class="layout">
+    <aside class="left-rail">
+      <span class="eyebrow">DROP. MERGE. GROW.</span>
+      <h1>Small eggs.<br>Big possibilities.</h1>
+      <p>Find a little room.<br>Grow something wonderful.</p>
+      <div class="score-card"><span class="eyebrow">YOUR SCORE</span><strong id="score">0</strong><div class="personal-best"><span>Personal best</span><b id="best">0</b></div></div>
+      <div class="tip"><span class="tip-leaf">✦</span><div><b>A growing tip</b><p>Matching stages merge.<br>Make an adult to unlock<br>hatchling drops.</p></div></div>
+      <div class="status-line" id="status" aria-live="polite">Your garden is almost ready.</div>
+    </aside>
+    <section class="game-frame" aria-label="Axie merge puzzle">
+      <div id="game" role="application" aria-label="Move with arrow keys, drop with Space, pause with P, restart with R" tabindex="0"></div>
+      <div id="welcome" class="modal-layer"><div class="welcome-card">
+        <span class="eyebrow">WELCOME TO YOUR LITTLE GARDEN</span>
+        <img class="hero-axie" data-stage="4" src="axie/egg.png" alt="Bird Axie" />
+        <h2>Let’s grow.</h2><p>Drop an egg. Match a pair.<br>Raise your very own Axie.</p>
+        <div class="mini-steps"><span>01 <b>Aim</b></span><span>02 <b>Drop</b></span><span>03 <b>Merge</b></span></div>
+        <button class="primary" id="start" disabled>Growing your garden… 0%</button>
+        <p class="fine-print">Keep your Axies below the red line.</p>
+      </div></div>
+      <div id="paused" class="modal-layer" hidden><div class="welcome-card compact"><span class="eyebrow">TAKE A BREATHER</span><h2>Room to rest.</h2><p>Your garden will be right here.</p><button id="resume" class="primary">Keep growing</button></div></div>
+    </section>
+    <aside class="right-rail">
+      <div class="next-card"><span class="eyebrow">UP NEXT</span><div class="next-orbit"><img id="next-image" src="axie/egg.png" alt="Next drop: egg" /></div><h3 id="next-name">Plant egg</h3><p>A small beginning.</p></div>
+      <div class="growth-heading"><span class="eyebrow">THE GROWTH JOURNEY</span><span>5 stages</span></div>
+      <ol class="evolution">
+        <li data-growth="0" class="reached"><img data-stage="0" src="axie/egg.png" alt="" /><span><b>Egg</b><small>Where it all begins</small></span><i>01</i></li>
+        <li data-growth="1"><img data-stage="1" src="axie/egg.png" alt="" /><span><b>Plant hatchling</b><small>10 merge points</small></span><i>02</i></li>
+        <li data-growth="2"><img data-stage="2" src="axie/egg.png" alt="" /><span><b>Aquatic kid</b><small>30 merge points</small></span><i>03</i></li>
+        <li data-growth="3"><img data-stage="3" src="axie/egg.png" alt="" /><span><b>Beast teen</b><small>90 merge points</small></span><i>04</i></li>
+        <li data-growth="4"><img data-stage="4" src="axie/egg.png" alt="" /><span><b>Bird adult</b><small>270 merge points</small></span><i>05</i></li>
+      </ol>
+      <div class="burst-note">✦ Two adults, one happy burst.<br><b>800 points</b> and room to grow.</div>
+    </aside>
+  </main>
+  <footer><span>Made for Axie Vibeathon <span class="footer-dot">·</span> Official Axie mixer art</span><span>← → aim <span class="key">Space</span> drop <span class="key">R</span> restart</span></footer>
+  <dialog id="instructions"><button id="close-help" class="close" aria-label="Close instructions">×</button><span class="eyebrow">A LITTLE GUIDE</span><h2>Room to grow.</h2><ol><li><b>Aim & drop.</b> Move your mouse or use A/D or arrow keys. Click or press Space. On touch, drag to aim and release.</li><li><b>Match a pair.</b> Two of the same stage grow into the next. Two adults burst for 800 points.</li><li><b>Keep it low.</b> A settled Axie above the red line for one second fills the garden and ends the run.</li><li><b>Find your rhythm.</b> Merges within half a second build a score multiplier. Raise an adult to unlock hatchling drops.</li></ol><p class="fine-print">Best score and sound preference stay in this browser.</p><button id="help-done" class="primary">Got it</button></dialog>
+  <script type="module" src="/src/main.ts"></script>
+</body>
 </html>

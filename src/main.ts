@@ -1,3 +1,4 @@
+import './shell';
 import Phaser from "phaser";
 import { Boot } from "./game/Boot";
 import { Game } from "./game/Game";
@@ -29,4 +30,6 @@ const config: Phaser.Types.Core.GameConfig = {
   },
 };
 
-new Phaser.Game(config);
+// Use the same font metrics for the canvas and surrounding interface.
+void Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 2500))])
+  .then(() => new Phaser.Game(config));

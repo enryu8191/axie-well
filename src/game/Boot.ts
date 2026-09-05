@@ -1,9 +1,10 @@
 import Phaser from "phaser";
-import { MIXER_CDN, mixerStageJobs, type MixerStageJob } from "./mixerPlant";
+import { MIXER_CDN, mixerStageJobs, type MixerStageJob } from "./mixerAxies";
 import { stageKey } from "./stages";
 
 export class Boot extends Phaser.Scene {
   private jobs: MixerStageJob[] = [];
+  private failed = false;
 
   constructor() {
     super("Boot");
@@ -11,24 +12,39 @@ export class Boot extends Phaser.Scene {
 
   preload(): void {
     this.cameras.main.setBackgroundColor("#b8e4f5");
-    this.jobs = mixerStageJobs();
+    try { this.jobs = mixerStageJobs(); }
+    catch { this.fail(); return; }
+    this.load.on('loaderror', () => this.fail());
+    this.load.on('progress', (progress: number) => window.dispatchEvent(new CustomEvent('well:loading', { detail: Math.round(progress * 100) })));
     this.load.setCORS("anonymous");
-    this.load.image(stageKey(0), "axie/egg.png");
+    this.load.image({ key: stageKey(0), url: "axie/egg.png", xhrSettings: { responseType: 'blob', timeout: 15000 } });
     const seen = new Set<string>();
     for (const job of this.jobs) {
       for (const layer of job.layers) {
         if (seen.has(layer.imagePath)) continue;
         seen.add(layer.imagePath);
-        this.load.image(layer.imagePath, MIXER_CDN + layer.imagePath);
+        this.load.image({ key: layer.imagePath, url: MIXER_CDN + layer.imagePath, xhrSettings: { responseType: 'blob', timeout: 15000 } });
       }
     }
   }
 
   create(): void {
+    if (this.failed) return;
     for (const job of this.jobs) {
       this.textures.addCanvas(stageKey(job.stage), this.stamp(job));
     }
+    const images = [0, 1, 2, 3, 4].map(i => {
+      if (i === 0) return 'axie/egg.png';
+      const source = this.textures.get(stageKey(i)).getSourceImage() as HTMLCanvasElement | HTMLImageElement;
+      return source instanceof HTMLCanvasElement ? source.toDataURL() : source.src;
+    });
+    window.dispatchEvent(new CustomEvent('well:ready', { detail: images }));
     this.scene.start("Game");
+  }
+
+  private fail(): void {
+    this.failed = true;
+    window.dispatchEvent(new CustomEvent('well:error'));
   }
 
   private stamp(job: MixerStageJob): HTMLCanvasElement {

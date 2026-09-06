@@ -6,7 +6,19 @@ Each grown stage has a distinct official [`@axieinfinity/mixer`](https://www.npm
 
 Portrait well. Canvas is 720x1280. Phaser Scale.FIT + CENTER_BOTH letterboxes on a landscape monitor.
 
-## Run
+## Play online (GitHub Pages)
+
+Public link after deploy: **https://enryu8191.github.io/axie-well/**
+
+One-time setup (if Pages is not on yet):
+
+1. Open [Settings → Pages](https://github.com/enryu8191/axie-well/settings/pages)
+2. Under **Build and deployment → Source**, choose **GitHub Actions**
+3. Push to `main` (or run the **Deploy GitHub Pages** workflow from the Actions tab)
+
+Every later push to `main` rebuilds and republishes automatically.
+
+## Run locally
 
 npm install && npm run dev
 

@@ -87,3 +87,7 @@ After three identical selections, that tier is temporarily excluded for one roll
 The aimed Axie is the current drop; UP NEXT shows the following drop. Both choices remain fixed until a successful drop. New unlocks apply when refilling the queue, never by changing an already shown preview.
 
 Overflow the red TOP-OUT line long enough and the well is lost.
+
+## Music and sound
+
+Press Play to start the original looping garden theme. Music and SFX have separate header toggles, saved on this browser; M toggles effects. Music pauses with the game or when the tab is hidden, resumes with Resume, and resets on Restart. Drop pops, ascending merge chimes, a titan celebration, and a gentle game-over cue accompany play. Audio is synthesized locally, so it needs no audio downloads. Existing saved Sound off preferences initially mute both channels.

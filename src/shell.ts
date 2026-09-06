@@ -13,6 +13,7 @@ el('start').onclick = () => { if (failed) location.reload(); else act('start'); 
 el('resume').onclick = () => act('pause');
 el('pause').onclick = () => act('pause');
 el('mute').onclick = () => act('mute');
+el('music').onclick = () => act('music');
 const dialog = el<HTMLDialogElement>('instructions');
 el('help').onclick = () => {
   resumeAfterHelp = started && !paused;
@@ -39,7 +40,7 @@ window.addEventListener('well:ready', event => {
   el('start').textContent = 'Play the garden  →';
   el<HTMLButtonElement>('start').disabled = false;
 });
-interface State { score: number; best: number; stage: string; stageId: number; current: number; next: number; poolMax: number; started: boolean; paused: boolean; over: boolean; muted: boolean; canDrop: boolean; chain: number; pieces: number }
+interface State { score: number; best: number; stage: string; stageId: number; current: number; next: number; poolMax: number; started: boolean; paused: boolean; over: boolean; muted: boolean; musicMuted: boolean; canDrop: boolean; chain: number; pieces: number }
 window.addEventListener('well:state', event => {
   const s = (event as CustomEvent<State>).detail;
   started = s.started;
@@ -50,8 +51,11 @@ window.addEventListener('well:state', event => {
   el('paused').hidden = !s.paused || s.over;
   el('pause').textContent = s.paused ? 'Resume' : 'Pause';
   el<HTMLButtonElement>('pause').disabled = !s.started || s.over;
-  el('mute').textContent = s.muted ? 'Sound off' : 'Sound on';
-  el('mute').setAttribute('aria-pressed', String(s.muted));
+  el('mute').textContent = s.muted ? 'SFX off' : 'SFX on';
+  el('mute').setAttribute('aria-pressed', String(!s.muted));
+  el('mute').setAttribute('aria-label', s.muted ? 'Sound effects off' : 'Sound effects on');
+  el('music').textContent = s.musicMuted ? 'Music off' : 'Music on';
+  el('music').setAttribute('aria-pressed', String(!s.musicMuted));
   el('next-name').textContent = STAGES[s.next].title;
   if (images[s.next]) el<HTMLImageElement>('next-image').src = images[s.next];
   el<HTMLImageElement>('next-image').alt = `Next drop: ${STAGES[s.next].title}`;

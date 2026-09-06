@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { GardenAudio } from "./audio";
 import { bodyFits, ellipseVertices, cornerVertices, mergeScale, MERGE_GROW_MS, SETTLE_MS, PIECE_MATERIAL } from "./collisions";
 import { readPreferences, savePreferences } from "./storage";
 import { DropQueue, dropWeights } from './drops';
@@ -69,7 +70,7 @@ export class Game extends Phaser.Scene {
   private previewX = WELL_CX;
   private mergeQueue: [Piece, Piece][] = [];
   private ignoreUntil = 0;
-  private audio?: AudioContext;
+  private audio = new GardenAudio();
   private restarting = false;
   private started = false;
   private paused = false;
@@ -131,7 +132,8 @@ export class Game extends Phaser.Scene {
     this.syncNextDropVisuals();
     this.preview.setPosition(this.previewX, DROP_Y);
     this.connectShell();
-    if (this.started) this.matter.world.resume();
+    this.audio.configure(this.preferences.musicMuted, this.preferences.muted);
+    if (this.started) { this.matter.world.resume(); this.unlockAudio(); }
     else this.matter.world.pause();
     this.refreshHud();
     if (import.meta.env.DEV && new URLSearchParams(location.search).has("preview")) {
@@ -555,7 +557,7 @@ export class Game extends Phaser.Scene {
       duration: 180,
       ease: "Back.out",
     });
-    this.beep(240);
+    this.audio.play('drop');
     this.canDrop = false;
     this.currentDrop = piece;
     this.settleMs = 0;
@@ -634,7 +636,7 @@ export class Game extends Phaser.Scene {
     if (stage >= MAX_STAGE) {
       this.addScore(TITAN_BURST_SCORE, x, y);
       this.burstFx(x, y);
-      this.beep(720);
+      this.audio.play('burst');
       if (wasDrop) {
         this.currentDrop = null;
         this.canDrop = true;
@@ -649,7 +651,7 @@ export class Game extends Phaser.Scene {
     // Grow the visible art and collider together, giving neighbors time to move.
     const spawned = this.spawn(next, this.clampX(x, next),
       Math.min(y, FLOOR_Y - FLOOR_H / 2 - STAGES[next].radius), vx * 0.4, vy * 0.4, 0, true);
-    this.beep(300 + next * 80);
+    this.audio.play('merge', next);
     if (wasDrop) {
       this.currentDrop = spawned;
       this.canDrop = false;
@@ -840,9 +842,10 @@ export class Game extends Phaser.Scene {
       stageId: this.bestReached, current: this.drops.current, next: this.drops.next,
       poolMax: dropWeights(this.bestReached).length - 1,
       started: this.started, paused: this.paused, over: this.over,
-      muted: this.preferences.muted, canDrop: this.canDrop,
+      muted: this.preferences.muted, musicMuted: this.preferences.musicMuted, canDrop: this.canDrop,
       chain: this.time.now - this.lastMergeAt <= CHAIN_WINDOW_MS ? this.chain : 0,
       pieces: this.pieces.size,
+      ...(import.meta.env.DEV && new URLSearchParams(location.search).has('qa') ? { audio: this.audio.status() } : {}),
     };
     const key = JSON.stringify(state);
     if (key !== this.lastUiState) {
@@ -856,6 +859,8 @@ export class Game extends Phaser.Scene {
     this.over = true;
     this.canDrop = false;
     this.matter.world.pause();
+    this.audio.pause();
+    this.audio.play('end');
     const reached = titleCase(STAGES[this.bestReached].name);
     this.ovTitle.setText(`Garden full!\nYour Axie reached ${reached}`);
     this.ovScore.setText(`Score ${this.score}  ·  Best ${this.preferences.best}`);
@@ -883,15 +888,28 @@ export class Game extends Phaser.Scene {
     if (!this.started || this.over) return;
     this.paused = !this.paused;
     this.pointerArmed = false;
-    if (this.paused) { this.matter.world.pause(); this.tweens.pauseAll(); }
-    else { this.matter.world.resume(); this.tweens.resumeAll(); this.ignoreUntil = this.time.now + INPUT_GRACE_MS; document.getElementById('game')?.focus({ preventScroll: true }); }
+    if (this.paused) { this.matter.world.pause(); this.tweens.pauseAll(); this.audio.pause(); }
+    else { this.matter.world.resume(); this.tweens.resumeAll(); this.unlockAudio(); this.ignoreUntil = this.time.now + INPUT_GRACE_MS; document.getElementById('game')?.focus({ preventScroll: true }); }
     this.refreshHud();
   }
 
   private toggleMute(): void {
     this.preferences.muted = !this.preferences.muted;
+    this.syncAudio();
     savePreferences(this.preferences);
     this.refreshHud();
+  }
+
+  private toggleMusic(): void {
+    this.preferences.musicMuted = !this.preferences.musicMuted;
+    this.syncAudio();
+    savePreferences(this.preferences);
+    this.refreshHud();
+  }
+
+  private syncAudio(): void {
+    this.audio.configure(this.preferences.musicMuted, this.preferences.muted);
+    if (this.started && !this.paused && !this.over) this.audio.start();
   }
 
   private connectShell(): void {
@@ -901,6 +919,7 @@ export class Game extends Phaser.Scene {
       if (action === 'restart') this.restart();
       if (action === 'pause') this.togglePause();
       if (action === 'mute') this.toggleMute();
+      if (action === 'music') this.toggleMusic();
       if (import.meta.env.DEV && new URLSearchParams(location.search).has('qa')) {
         if (action === 'qa-merge') {
           this.spawn(0, 330, 900, 0, 0, 0);
@@ -936,48 +955,24 @@ export class Game extends Phaser.Scene {
         }
       }
     };
-    const onBlur = () => { if (this.started && !this.paused && !this.over) this.togglePause(); };
+    const onBlur = () => { if (this.started && !this.paused && !this.over) this.togglePause(); else this.audio.pause(); };
+    const onVisibility = () => { if (document.hidden) onBlur(); };
+    document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('well:action', onAction);
     window.addEventListener('blur', onBlur);
     this.events.once('shutdown', () => {
       window.removeEventListener('well:action', onAction);
       window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibility);
       this.input.keyboard?.removeAllListeners();
       // Phaser shuts down the world and destroys scene objects before this listener.
       this.pieces.clear();
-      if (this.audio) void this.audio.close().catch(() => {});
-      this.audio = undefined;
+      this.audio.pause(true);
     });
   }
 
   private unlockAudio(): void {
-    try {
-      if (!this.audio) this.audio = new AudioContext();
-      if (this.audio.state === "suspended") void this.audio.resume();
-    } catch {
-      /* ignore */
-    }
-  }
-
-  private beep(freq: number): void {
-    if (this.preferences.muted) return;
-    try {
-      this.unlockAudio();
-      const ctx = this.audio;
-      if (!ctx) return;
-      const t = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, t);
-      g.gain.setValueAtTime(0.05, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-      osc.connect(g);
-      g.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.1);
-    } catch {
-      /* ignore */
-    }
+    this.audio.configure(this.preferences.musicMuted, this.preferences.muted);
+    this.audio.start();
   }
 }

@@ -34,3 +34,7 @@ These are original decorative illustrations, separate from the official Axie cha
 Typography: DM Sans, Fredoka and Nunito from Google Fonts (SIL Open Font License); system-font fallbacks are included. Dependencies remain pinned by `package-lock.json`. The mixer package declares MIT for code; that declaration does not grant general rights to Axie media. This build retains the source project's Axie Vibeathon/Sky Mavis-approved-program use scope.
 
 References: [Vibeathon guide](https://skymavis.notion.site/Get-Started-with-Axie-Vibeathon-3cec48ae3fdd81d6ba74d9b193aa8f4a), [Builder Resource Kit](https://skymavis.notion.site/Builder-Resource-Kit-39ec48ae3fdd81449b68d1c361d319a5).
+
+## Original garden audio
+
+`src/game/audio.ts` contains an original eight-bar theme composed for The Well: a softly plucked melody at 84 BPM over Cmaj7, Am7, Fmaj7, and G6, with quiet bird-like ornaments. Web Audio synthesizes the music and drop, merge, titan-burst, and game-over cues at runtime. No recordings or melodies from Axie soundtracks or third parties are bundled. Created with OpenAI Codex on 2026-09-07.

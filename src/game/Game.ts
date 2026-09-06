@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import { readPreferences, savePreferences } from "./storage";
+import { DropQueue, dropWeights } from './drops';
 import {
-  ADULT_BURST_SCORE,
+  TITAN_BURST_SCORE,
   MAX_STAGE,
   STAGES,
   stageKey,
@@ -54,7 +55,7 @@ export class Game extends Phaser.Scene {
   private nextId = 1;
   private score = 0;
   private bestReached = 0;
-  private madeAdult = false;
+  private drops!: DropQueue;
   private chain = 0;
   private lastMergeAt = -99999;
   private canDrop = true;
@@ -99,7 +100,7 @@ export class Game extends Phaser.Scene {
     this.nextId = 1;
     this.score = 0;
     this.bestReached = 0;
-    this.madeAdult = false;
+    this.drops = new DropQueue();
     this.chain = 0;
     this.lastMergeAt = -99999;
     this.canDrop = true;
@@ -340,10 +341,9 @@ export class Game extends Phaser.Scene {
 
     this.gardenPanel(WELL_CX, 1200, 640, 100).setDepth(29);
     STAGES.forEach((st, i) => {
-      const x = 136 + i * 112;
-      this.growthIcons.push(this.add.image(x, 1190, stageKey(i)).setDisplaySize(50, 50).setDepth(30).setAlpha(i === 0 ? 1 : 0.35));
-      this.add.text(x, 1220, titleCase(st.name), { fontFamily: FONT_UI, fontSize: '15px', color: INK }).setOrigin(0.5).setDepth(30);
-      if (i < MAX_STAGE) this.add.text(x + 56, 1190, '›', { fontFamily: FONT_UI, fontSize: '26px', color: MUTE }).setOrigin(0.5).setDepth(30);
+      const x = 80 + i * 62;
+      this.growthIcons.push(this.add.image(x, 1190, stageKey(i)).setDisplaySize(42, 42).setDepth(30).setAlpha(i === 0 ? 1 : 0.35));
+      this.add.text(x, 1219, titleCase(st.name), { fontFamily: FONT_UI, fontSize: '11px', color: INK }).setOrigin(0.5).setDepth(30);
     });
     this.add
       .text(WELL_CX, HEIGHT - 26, "aim & release  ·  Space drop  ·  P pause", {
@@ -483,7 +483,7 @@ export class Game extends Phaser.Scene {
   }
 
   private nextDropStage(): number {
-    return this.madeAdult ? 1 : 0;
+    return this.drops.current;
   }
 
   private syncNextDropVisuals(): void {
@@ -491,7 +491,7 @@ export class Game extends Phaser.Scene {
     const key = stageKey(stage);
     this.preview.setTexture(key);
     this.fitSprite(this.preview, stage);
-    this.hudNext.setTexture(key);
+    this.hudNext.setTexture(stageKey(this.drops.next));
     this.fitHudNext();
     this.previewX = this.clampX(this.previewX, stage);
   }
@@ -537,6 +537,8 @@ export class Game extends Phaser.Scene {
     this.canDrop = false;
     this.currentDrop = piece;
     this.settleFrames = 0;
+    this.drops.advance(this.bestReached);
+    this.syncNextDropVisuals();
   }
 
   private spawn(
@@ -611,7 +613,7 @@ export class Game extends Phaser.Scene {
     this.destroyPiece(b);
 
     if (stage >= MAX_STAGE) {
-      this.addScore(ADULT_BURST_SCORE, x, y);
+      this.addScore(TITAN_BURST_SCORE, x, y);
       this.burstFx(x, y);
       this.beep(720);
       if (wasDrop) {
@@ -625,7 +627,9 @@ export class Game extends Phaser.Scene {
 
     const next = stage + 1;
     this.addScore(STAGES[next].score, x, y);
-    const spawned = this.spawn(next, x, y, vx * 0.4, vy * 0.4, 0);
+    // A growing circle must remain inside the jar sides and above its floor.
+    const spawned = this.spawn(next, this.clampX(x, next),
+      Math.min(y, FLOOR_Y - FLOOR_H / 2 - STAGES[next].radius), vx * 0.4, vy * 0.4, 0);
     const sx = spawned.img.scaleX;
     const sy = spawned.img.scaleY;
     spawned.img.setScale(sx * 0.55, sy * 0.55);
@@ -730,10 +734,6 @@ export class Game extends Phaser.Scene {
 
   private noteStage(stage: number): void {
     if (stage > this.bestReached) this.bestReached = stage;
-    if (stage >= MAX_STAGE && !this.madeAdult) {
-      this.madeAdult = true;
-      this.syncNextDropVisuals();
-    }
   }
 
   private livingBest(): number {
@@ -815,7 +815,9 @@ export class Game extends Phaser.Scene {
     this.growthIcons.forEach((icon, i) => icon.setAlpha(i <= this.bestReached ? 1 : 0.35));
     const state = {
       score: this.score, best: this.preferences.best, stage: titleCase(STAGES[this.bestReached].name),
-      next: this.nextDropStage(), started: this.started, paused: this.paused, over: this.over,
+      stageId: this.bestReached, current: this.drops.current, next: this.drops.next,
+      poolMax: dropWeights(this.bestReached).length - 1,
+      started: this.started, paused: this.paused, over: this.over,
       muted: this.preferences.muted, canDrop: this.canDrop,
       chain: this.time.now - this.lastMergeAt <= CHAIN_WINDOW_MS ? this.chain : 0,
       pieces: this.pieces.size,
@@ -887,8 +889,17 @@ export class Game extends Phaser.Scene {
           this.spawn(3, 406, 930, 0, 0, 0);
         }
         if (action === 'qa-burst') {
-          this.spawn(4, 285, 930, 0, 0, 0);
-          this.spawn(4, 430, 930, 0, 0, 0);
+          this.spawn(MAX_STAGE, WELL_CX, 896, 0, 0, 0);
+          this.spawn(MAX_STAGE, WELL_CX, 492, 0, 0, 0);
+        }
+        if (action === 'qa-bird') {
+          this.spawn(4, 280, 1000, 0, 0, 0);
+          this.spawn(4, 425, 1000, 0, 0, 0);
+        }
+        if (action === 'qa-giant') this.spawn(MAX_STAGE, WELL_CX, 896, 0, 0, 0);
+        if (action === 'qa-titan') {
+          this.spawn(8, WELL_CX, 930, 0, 0, 0);
+          this.spawn(8, WELL_CX, 590, 0, 0, 0);
         }
         if (action === 'qa-overflow') {
           const piece = this.spawn(2, WELL_CX, KILL_Y, 0, 0, 0);

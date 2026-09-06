@@ -35,7 +35,8 @@ const PART_TYPES = ['back', 'ears', 'eyes', 'horn', 'mouth', 'tail'] as const;
 type PartType = typeof PART_TYPES[number];
 interface Appearance {
   stage: number;
-  axieClass: 'plant' | 'aquatic' | 'beast' | 'bird';
+  axieClass: 'plant' | 'aquatic' | 'beast' | 'bird' | 'bug' | 'reptile' | 'mech' | 'dusk' | 'dawn';
+  partClass?: 'plant' | 'aquatic' | 'beast' | 'bird' | 'bug' | 'reptile';
   body: string;
   color: string;
   parts: Record<PartType, number>;
@@ -53,6 +54,16 @@ const GROWTH: Appearance[] = [
     parts: { eyes: 8, ears: 4, back: 4, horn: 2, mouth: 8, tail: 10 } },
   { stage: 4, axieClass: 'bird', body: 'body-sumo', color: 'bird-04', evolved: true,
     parts: { eyes: 2, ears: 8, back: 8, horn: 8, mouth: 4, tail: 12 } },
+  { stage: 5, axieClass: 'bug', body: 'body-fuzzy', color: 'bug-03', evolved: true,
+    parts: { eyes: 4, ears: 10, back: 6, horn: 12, mouth: 10, tail: 2 } },
+  { stage: 6, axieClass: 'reptile', body: 'body-normal', color: 'reptile-03', evolved: true,
+    parts: { eyes: 8, ears: 12, back: 4, horn: 6, mouth: 8, tail: 12 } },
+  { stage: 7, axieClass: 'mech', partClass: 'bug', body: 'body-sumo', color: 'mech-00', evolved: true,
+    parts: { eyes: 10, ears: 4, back: 12, horn: 4, mouth: 4, tail: 8 } },
+  { stage: 8, axieClass: 'dusk', partClass: 'reptile', body: 'body-curly', color: 'dusk-03', evolved: true,
+    parts: { eyes: 4, ears: 6, back: 8, horn: 10, mouth: 10, tail: 4 } },
+  { stage: 9, axieClass: 'dawn', partClass: 'bird', body: 'body-sumo', color: 'dawn-03', evolved: true,
+    parts: { eyes: 10, ears: 2, back: 12, horn: 12, mouth: 2, tail: 8 } },
 ];
 
 let ready = false;
@@ -65,13 +76,15 @@ export function initMixer(): void {
 
 function stageCombo(appearance: Appearance): Map<string, string> {
   const { body, axieClass, parts, evolved } = appearance;
+  // Secret classes have official body/color variants and use the six base classes' parts.
+  const partClass = appearance.partClass ?? axieClass;
   const combo = new Map<string, string>([
     ["body", body],
     ["body-class", axieClass],
   ]);
   for (const part of PART_TYPES) {
-    const key = `${axieClass}-${String(parts[part]).padStart(2, '0')}`;
-    const valid = genesData.items.parts.some(p => p.class === axieClass && p.partType === part && p.skins.includes(key));
+    const key = `${partClass}-${String(parts[part]).padStart(2, '0')}`;
+    const valid = genesData.items.parts.some(p => p.class === partClass && p.partType === part && p.skins.includes(key));
     if (!valid) throw new Error(`Unknown official ${part}: ${key}`);
     combo.set(part, key);
   }

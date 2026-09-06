@@ -1,8 +1,8 @@
 # The Well
 
-A browser drop-and-merge puzzle for Axie Infinity Vibeathon. Aim, release an egg, and merge matching stages: egg → hatchling → kid → teen → adult. Two adults burst to clear room. Includes an instruction screen, pause/resume, sound toggle, saved personal best, growth tracker, and touch/keyboard controls.
+A browser drop-and-merge puzzle for Axie Infinity Vibeathon. Aim, release a random small Axie, and merge matching pairs through 10 increasingly large tiers. Bird adult is the midpoint; the final Dawn titan fills over three quarters of the jar's width. Two titans burst to clear room. Includes a separate next-piece preview, instruction screen, pause/resume, sound toggle, saved personal best, growth tracker, and touch/keyboard controls.
 
-Each grown stage has a distinct official [`@axieinfinity/mixer`](https://www.npmjs.com/package/@axieinfinity/mixer) identity: green Plant hatchling, blue Aquatic kid, orange Beast teen, and pink Bird adult. Classes, color variants, body shapes, and parts differ per tier. This is a puzzle progression, not a claim that canonical Axies change class as they age. The egg is the original feed art.
+Each grown tier has a distinct official [`@axieinfinity/mixer`](https://www.npmjs.com/package/@axieinfinity/mixer) identity: green Plant, blue Aquatic, orange Beast, pink Bird, red Bug, purple Reptile, white Mech, deep teal Dusk, and golden Dawn. Classes, colors, body shapes, and parts differ per tier. This is a puzzle progression, not a claim that canonical Axies change class as they age. The egg is the original feed art.
 
 Portrait well. Canvas is 720x1280. Phaser Scale.FIT + CENTER_BOTH letterboxes on a landscape monitor.
 
@@ -42,9 +42,9 @@ Use a current browser. An internet connection is needed on first load for offici
 
 ## Development checks
 
-Run the dev server and open `/?qa`. The developer panel can seed colliding eggs, teens, adults, and a settled overflow piece. It shows current score, stage, piece count, drop availability, pause state, and game-over state. The QA panel and seed handlers are excluded from production builds; QA scores use separate browser storage.
+`npm test` checks weighted drop variety, milestone unlocks, the three-repeat limit, preview stability, queue reset, and the ten-tier size ladder. Run the dev server and open `/?qa` for colliding eggs, teens, Birds, Dusk pairs, titans, and a settled overflow piece. The panel shows current and queued drops, unlocked pool, score, tier, pieces, pause, and game-over state. QA controls are excluded from production builds; QA scores use separate browser storage.
 
-Check normal Space/click drops, merge points, adult unlock, adult burst, overflow, restart repeatedly, mute, pause, and phone layout. Visual squash is applied only to rendered images; physics circles keep their configured radius.
+Check Space/click drops, Bird-to-Bug growth, Dusk-to-Dawn growth, titan burst, overflow, restart, mute, pause, and phone layout. Visual squash is applied only to rendered images; physics circles keep their configured radius. Larger merged bodies are clamped inside the side walls and above the floor.
 
 ## Sources and AI assistance
 
@@ -58,12 +58,28 @@ Design guidance read: [Get Started with Axie Vibeathon](https://skymavis.notion.
 - two hatchlings -> kid: 30
 - two kids -> teen: 90
 - two teens -> adult: 270
-- two adults -> burst: 800 (no 6th stage)
+- two adults -> Bug elder: 810
+- two elders -> Reptile guardian: 2,430
+- two guardians -> Mech sentinel: 7,290
+- two sentinels -> Dusk colossus: 21,870
+- two colossi -> Dawn titan: 65,610
+- two titans -> burst: 200,000
 
-Merges within 0.5s of the previous merge chain (growth spurt): first merge of a run is x1, next x2, then x3. Show xN on the +score popup if N>1. Reset if 0.5s elapses. Multiplier applies to merge points including adult pop.
+Merges within 0.5s of the previous merge chain (growth spurt): first merge of a run is x1, next x2, then x3. Show xN on the +score popup if N>1. Reset if 0.5s elapses. Multiplier applies to merge points including titan bursts.
 
 ## Next drop
 
-Next drop is always an egg until you create your first adult this run. After the first adult, next drop is a hatchling. Never random sizes.
+Drops are randomly selected with the following base weights (egg, hatchling, kid, teen, adult, elder):
+
+| Highest tier reached this run | Pool weights |
+| --- | --- |
+| Start | 50, 32, 18 |
+| Bird adult | 35, 30, 23, 12 |
+| Reptile guardian | 22, 28, 25, 17, 8 |
+| Dusk colossus | 15, 23, 25, 19, 12, 6 |
+
+After three identical selections, that tier is temporarily excluded for one roll and the remaining weights are renormalized. This slightly changes the long-run frequencies from the base percentages. Mech, Reptile, Dusk, and Dawn remain merge-only. Unlocks use the highest tier ever reached in the current run and reset on restart.
+
+The aimed Axie is the current drop; UP NEXT shows the following drop. Both choices remain fixed until a successful drop. New unlocks apply when refilling the queue, never by changing an already shown preview.
 
 Overflow the red TOP-OUT line long enough and the well is lost.

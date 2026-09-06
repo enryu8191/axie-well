@@ -20,15 +20,15 @@
       <h1>Small eggs.<br>Big possibilities.</h1>
       <p>Find a little room.<br>Grow something wonderful.</p>
       <div class="score-card"><span class="eyebrow">YOUR SCORE</span><strong id="score">0</strong><div class="personal-best"><span>Personal best</span><b id="best">0</b></div></div>
-      <div class="tip"><span class="tip-leaf">✦</span><div><b>A growing tip</b><p>Matching stages merge.<br>Make an adult to unlock<br>hatchling drops.</p></div></div>
+      <div class="tip"><span class="tip-leaf">✦</span><div><b>Small drops. Giant Axies.</b><p>Random drops from the start.<br>Grow bigger Axies to unlock<br>more drop varieties.</p></div></div>
       <div class="status-line" id="status" aria-live="polite">Your garden is almost ready.</div>
     </aside>
     <section class="game-frame" aria-label="Axie merge puzzle">
       <div id="game" role="application" aria-label="Move with arrow keys, drop with Space, pause with P, restart with R" tabindex="0"></div>
       <div id="welcome" class="modal-layer"><div class="welcome-card">
         <span class="eyebrow">WELCOME TO YOUR LITTLE GARDEN</span>
-        <img class="hero-axie" data-stage="4" src="axie/egg.png" alt="Bird Axie" />
-        <h2>Let’s grow.</h2><p>Drop an egg. Match a pair.<br>Raise your very own Axie.</p>
+        <img class="hero-axie" data-stage="9" src="axie/egg.png" alt="Dawn titan Axie" />
+        <h2>Grow a giant.</h2><p>Drop a surprise. Match a pair.<br>Discover all 10 Axie tiers.</p>
         <div class="mini-steps"><span>01 <b>Aim</b></span><span>02 <b>Drop</b></span><span>03 <b>Merge</b></span></div>
         <button class="primary" id="start" disabled>Growing your garden… 0%</button>
         <p class="fine-print">Keep your Axies below the red line.</p>
@@ -36,20 +36,14 @@
       <div id="paused" class="modal-layer" hidden><div class="welcome-card compact"><span class="eyebrow">TAKE A BREATHER</span><h2>Room to rest.</h2><p>Your garden will be right here.</p><button id="resume" class="primary">Keep growing</button></div></div>
     </section>
     <aside class="right-rail">
-      <div class="next-card"><span class="eyebrow">UP NEXT</span><div class="next-orbit"><img id="next-image" src="axie/egg.png" alt="Next drop: egg" /></div><h3 id="next-name">Plant egg</h3><p>A small beginning.</p></div>
-      <div class="growth-heading"><span class="eyebrow">THE GROWTH JOURNEY</span><span>5 stages</span></div>
-      <ol class="evolution">
-        <li data-growth="0" class="reached"><img data-stage="0" src="axie/egg.png" alt="" /><span><b>Egg</b><small>Where it all begins</small></span><i>01</i></li>
-        <li data-growth="1"><img data-stage="1" src="axie/egg.png" alt="" /><span><b>Plant hatchling</b><small>10 merge points</small></span><i>02</i></li>
-        <li data-growth="2"><img data-stage="2" src="axie/egg.png" alt="" /><span><b>Aquatic kid</b><small>30 merge points</small></span><i>03</i></li>
-        <li data-growth="3"><img data-stage="3" src="axie/egg.png" alt="" /><span><b>Beast teen</b><small>90 merge points</small></span><i>04</i></li>
-        <li data-growth="4"><img data-stage="4" src="axie/egg.png" alt="" /><span><b>Bird adult</b><small>270 merge points</small></span><i>05</i></li>
-      </ol>
-      <div class="burst-note">✦ Two adults, one happy burst.<br><b>800 points</b> and room to grow.</div>
+      <div class="next-card"><span class="eyebrow">UP NEXT</span><div class="next-orbit"><img id="next-image" src="axie/egg.png" alt="Next drop: egg" /></div><h3 id="next-name">Plant egg</h3><p id="drop-pool">Random pool: egg → kid</p></div>
+      <div class="growth-heading"><span class="eyebrow">THE GROWTH JOURNEY</span><span>10 tiers</span></div>
+      <ol class="evolution" aria-label="All 10 merge tiers"></ol>
+      <div class="burst-note">✦ Bird is just the beginning.<br>Merge two Dawn titans for <b><span id="burst-points">200,000</span> points</b> and room to grow.</div>
     </aside>
   </main>
   <footer><span>Made for Axie Vibeathon <span class="footer-dot">·</span> Official Axie mixer art</span><span>← → aim <span class="key">Space</span> drop <span class="key">R</span> restart</span></footer>
-  <dialog id="instructions"><button id="close-help" class="close" aria-label="Close instructions">×</button><span class="eyebrow">A LITTLE GUIDE</span><h2>Room to grow.</h2><ol><li><b>Aim & drop.</b> Move your mouse or use A/D or arrow keys. Click or press Space. On touch, drag to aim and release.</li><li><b>Match a pair.</b> Two of the same stage grow into the next. Two adults burst for 800 points.</li><li><b>Keep it low.</b> A settled Axie above the red line for one second fills the garden and ends the run.</li><li><b>Find your rhythm.</b> Merges within half a second build a score multiplier. Raise an adult to unlock hatchling drops.</li></ol><p class="fine-print">Best score and sound preference stay in this browser.</p><button id="help-done" class="primary">Got it</button></dialog>
+  <dialog id="instructions"><button id="close-help" class="close" aria-label="Close instructions">×</button><span class="eyebrow">A LITTLE GUIDE</span><h2>Room for giants.</h2><ol><li><b>Aim & drop.</b> Move your mouse or use A/D or arrow keys. Click or press Space. On touch, drag to aim and release. The Axie above the jar is your current drop; UP NEXT shows the following one.</li><li><b>A little surprise.</b> Start with random eggs, hatchlings, and Aquatic kids. Reach Bird to add Beast drops, Reptile to add Bird drops, and Dusk to add Bug drops. Small Axies stay more common; no more than three identical drops in a row.</li><li><b>Grow through 10 tiers.</b> Matching pairs merge into bigger Axies, all the way to the giant Dawn titan. Two titans burst for 200,000 points.</li><li><b>Keep it low.</b> A settled Axie above the red line for one second ends the run. Merges within half a second build a score multiplier.</li></ol><p class="fine-print">Best score and sound preference stay in this browser.</p><button id="help-done" class="primary">Got it</button></dialog>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

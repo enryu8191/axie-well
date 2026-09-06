@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { MIXER_CDN, mixerStageJobs, type MixerStageJob } from "./mixerAxies";
-import { stageKey } from "./stages";
+import { STAGES, stageKey } from "./stages";
 
 export class Boot extends Phaser.Scene {
   private jobs: MixerStageJob[] = [];
@@ -36,7 +36,7 @@ export class Boot extends Phaser.Scene {
     for (const job of this.jobs) {
       this.textures.addCanvas(stageKey(job.stage), this.stamp(job));
     }
-    const images = [0, 1, 2, 3, 4].map(i => {
+    const images = STAGES.map(({ id: i }) => {
       if (i === 0) return 'axie/egg.png';
       const source = this.textures.get(stageKey(i)).getSourceImage() as HTMLCanvasElement | HTMLImageElement;
       return source instanceof HTMLCanvasElement ? source.toDataURL() : source.src;

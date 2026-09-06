@@ -50,10 +50,34 @@ h1 { color: #355329; text-shadow: 0 2px 0 #fff9dc; }
   background: #e4edd0;
 }
 .evolution {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
   padding: 16px 12px;
   border-image: url('/ui/garden-panel.png') 18% fill / 24px;
   filter: drop-shadow(0 5px 7px #3b512315);
 }
+.evolution li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-content: center;
+  text-align: left;
+  min-height: 46px;
+  gap: 4px;
+  padding: 4px 1px;
+  margin: 0;
+}
+.evolution li img { width: 28px; height: 28px; }
+.evolution li span { width: 100%; }
+.evolution li b { font-size: 9px; }
+.evolution li small { font-size: 8px; margin-top: 1px; }
+.evolution li i { display: none; }
+.right-rail { max-height: calc(100dvh - 160px); overflow-y: auto; scrollbar-width: thin; padding: 4px; }
+.right-rail .next-card { padding: 16px 14px; }
+.right-rail .next-orbit { width: 64px; height: 58px; margin-top: 8px; }
+.right-rail .next-orbit img { width: 56px; height: 56px; }
+.right-rail h3 { font-size: 18px; margin-top: 5px; }
+.growth-heading { margin: 14px 0 10px; }
 .evolution li.reached { background: #dae8b9c9; }
 .evolution small, .evolution i { color: #68774d; }
 .growth-heading {

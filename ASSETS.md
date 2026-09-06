@@ -8,6 +8,12 @@ Grown Axies are built at runtime with the official 2D mixer:
 - Kid: Aquatic, `aquatic-04` blue, `body-curly`; eyes 04, ears 02, back 02, horn 06, mouth 02, tail 04
 - Teen: Beast, `beast-03` orange, `body-fuzzy`, lv2 parts; eyes 08, ears 04, back 04, horn 02, mouth 08, tail 10
 - Adult: Bird, `bird-04` pink, `body-sumo`, lv2 parts; eyes 02, ears 08, back 08, horn 08, mouth 04, tail 12
+- Elder: Bug, `bug-03` red, `body-fuzzy`, lv2; eyes 04, ears 10, back 06, horn 12, mouth 10, tail 02
+- Guardian: Reptile, `reptile-03` purple, `body-normal`, lv2; eyes 08, ears 12, back 04, horn 06, mouth 08, tail 12
+- Sentinel: Mech, `mech-00` white, `body-sumo`, lv2 Bug parts; eyes 10, ears 04, back 12, horn 04, mouth 04, tail 08
+- Colossus: Dusk, `dusk-03` teal, `body-curly`, lv2 Reptile parts; eyes 04, ears 06, back 08, horn 10, mouth 10, tail 04
+- Titan: Dawn, `dawn-03` gold, `body-sumo`, lv2 Bird parts; eyes 10, ears 02, back 12, horn 12, mouth 02, tail 08
+- Mech, Dusk, and Dawn use official class/color variants with base-class parts. The mixer catalog has parts for six base classes, and body/color variants for all nine classes.
 - Appearance mapping lives in `src/game/mixerAxies.ts`. Color indices are resolved from the official gene catalog, and part keys are validated before loading.
 - Use is for Axie Vibeathon and other Sky Mavis-approved programs
 

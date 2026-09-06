@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { bodyFits, ellipseVertices, cornerVertices, mergeScale, MERGE_GROW_MS, SETTLE_MS, PIECE_MATERIAL } from "./collisions";
 import { readPreferences, savePreferences } from "./storage";
 import { DropQueue, dropWeights } from './drops';
 import {
@@ -21,7 +22,6 @@ const KILL_Y = 274;
 const DROP_Y = 220;
 const PREVIEW_SPEED = 520;
 const SETTLE_SPEED = 0.22;
-const SETTLE_FRAMES = 16;
 const OVERFLOW_MS = 1000;
 const INPUT_GRACE_MS = 280;
 const CHAIN_WINDOW_MS = 500;
@@ -37,6 +37,8 @@ type MatterBody = {
   angularVelocity: number;
   isSleeping: boolean;
   position: { x: number; y: number };
+  vertices: { x: number; y: number }[];
+  bounds: { min: { x: number; y: number }; max: { x: number; y: number } };
   gameObject?: Phaser.GameObjects.GameObject;
   parent?: { gameObject?: Phaser.GameObjects.GameObject };
 };
@@ -48,6 +50,7 @@ interface Piece {
   physics: Phaser.Physics.Matter.Image;
   merging: boolean;
   born: number;
+  growthAge: number;
 }
 
 export class Game extends Phaser.Scene {
@@ -61,7 +64,7 @@ export class Game extends Phaser.Scene {
   private canDrop = true;
   private over = false;
   private currentDrop: Piece | null = null;
-  private settleFrames = 0;
+  private settleMs = 0;
   private overflowMs = 0;
   private previewX = WELL_CX;
   private mergeQueue: [Piece, Piece][] = [];
@@ -76,6 +79,7 @@ export class Game extends Phaser.Scene {
   private growthIcons: Phaser.GameObjects.Image[] = [];
   private lastUiState = '';
   private pointerArmed = false;
+  private collisionOverlay?: Phaser.GameObjects.Graphics;
 
   private preview!: Phaser.GameObjects.Image;
   private guide!: Phaser.GameObjects.Ellipse;
@@ -96,6 +100,7 @@ export class Game extends Phaser.Scene {
   }
 
   create(data: { playing?: boolean } = {}): void {
+    this.collisionOverlay = undefined;
     this.pieces = new Map();
     this.nextId = 1;
     this.score = 0;
@@ -106,7 +111,7 @@ export class Game extends Phaser.Scene {
     this.canDrop = true;
     this.over = false;
     this.currentDrop = null;
-    this.settleFrames = 0;
+    this.settleMs = 0;
     this.overflowMs = 0;
     this.previewX = WELL_CX;
     this.mergeQueue = [];
@@ -143,6 +148,15 @@ export class Game extends Phaser.Scene {
     for (const p of this.pieces.values()) {
       p.img.setPosition(p.physics.x, p.physics.y).setRotation(p.physics.rotation);
     }
+    if (this.collisionOverlay?.visible) {
+      this.collisionOverlay.clear().lineStyle(2, 0x165dce, 0.9);
+      for (const p of this.pieces.values()) {
+        const vertices = (p.physics.body as unknown as MatterBody).vertices;
+        this.collisionOverlay.beginPath().moveTo(vertices[0].x, vertices[0].y);
+        for (const v of vertices.slice(1)) this.collisionOverlay.lineTo(v.x, v.y);
+        this.collisionOverlay.closePath().strokePath();
+      }
+    }
     if (!this.started || this.paused) return;
     this.steerPreview(dt);
     this.preview.setPosition(this.previewX, DROP_Y);
@@ -159,14 +173,15 @@ export class Game extends Phaser.Scene {
     }
     if (this.over) return;
 
-    this.tickSettle();
+    this.tickSettle(dt);
     this.tickOverflow(dt);
     this.refreshHud();
   }
 
-  private fitSprite(img: Phaser.GameObjects.Image, stage: number): void {
-    const fit = STAGES[stage].radius * 2 * 1.28;
-    img.setDisplaySize(fit, fit);
+  private fitSprite(img: Phaser.GameObjects.Image, stage: number, scale = 1): void {
+    const body = bodyFits.get(stage)!;
+    const fit = STAGES[stage].radius * 2 / body.diameter * scale;
+    img.setOrigin(body.originX, body.originY).setDisplaySize(fit, fit);
   }
 
   private drawWorld(): void {
@@ -262,6 +277,10 @@ export class Game extends Phaser.Scene {
       label: "floor",
       friction: 0.55,
     });
+    for (const [edge, direction] of [[innerLeft, 1], [innerRight, -1]] as const) {
+      const verts = cornerVertices(edge, FLOOR_Y - FLOOR_H / 2, 40, direction);
+      this.matter.add.fromVertices(edge + direction * 40 / 3, FLOOR_Y - FLOOR_H / 2 - 40 / 3, verts, opts);
+    }
   }
 
   private buildHud(): void {
@@ -468,11 +487,14 @@ export class Game extends Phaser.Scene {
   }
 
   private bindPhysics(): void {
-    this.matter.world.on("collisionstart", (event: { pairs: { bodyA: MatterBody; bodyB: MatterBody }[] }) => {
+    this.matter.world.on("beforeupdate", (event: { delta: number }) => this.growPieces(event.delta));
+    const contact = (event: { pairs: { bodyA: MatterBody; bodyB: MatterBody }[] }) => {
       for (const pair of event.pairs) {
         this.tryQueueMerge(pair.bodyA, pair.bodyB);
       }
-    });
+    };
+    this.matter.world.on("collisionstart", contact);
+    this.matter.world.on("collisionactive", contact);
     this.matter.world.on("afterupdate", () => this.flushMerges());
   }
 
@@ -536,7 +558,7 @@ export class Game extends Phaser.Scene {
     this.beep(240);
     this.canDrop = false;
     this.currentDrop = piece;
-    this.settleFrames = 0;
+    this.settleMs = 0;
     this.drops.advance(this.bestReached);
     this.syncNextDropVisuals();
   }
@@ -548,28 +570,24 @@ export class Game extends Phaser.Scene {
     vx: number,
     vy: number,
     spin: number,
+    growing = false,
   ): Piece {
     const st = STAGES[stage];
+    const fit = bodyFits.get(stage)!;
     const physics = this.matter.add.image(x, y, stageKey(stage), undefined, {
-      shape: { type: "circle", radius: st.radius },
-      restitution: 0.08,
-      friction: 0.38,
-      frictionAir: 0.018,
-      frictionStatic: 0.55,
-      density: 0.002,
-      slop: 0.05,
-      label: "piece",
+      shape: { type: "fromVertices", verts: ellipseVertices(st.radius * fit.widthRatio, st.radius * fit.heightRatio) },
+      ...PIECE_MATERIAL,
     });
-    // Physics uses a fixed circle; visual squash never resizes the body.
+    if (growing) physics.setScale(mergeScale(0));
     physics.setVisible(false);
     physics.setSleepThreshold(16);
     physics.setVelocity(vx, vy);
     physics.setAngularVelocity(spin);
     const img = this.add.image(x, y, stageKey(stage)).setDepth(10);
-    this.fitSprite(img, stage);
+    this.fitSprite(img, stage, growing ? mergeScale(0) : 1);
     const id = this.nextId++;
     physics.setData("pid", id);
-    const piece: Piece = { id, stage, img, physics, merging: false, born: this.time.now };
+    const piece: Piece = { id, stage, img, physics, merging: false, born: this.time.now, growthAge: growing ? 0 : MERGE_GROW_MS };
     this.pieces.set(id, piece);
     this.noteStage(stage);
     return piece;
@@ -582,6 +600,7 @@ export class Game extends Phaser.Scene {
     if (pa.id === pb.id) return;
     if (pa.merging || pb.merging) return;
     if (pa.stage !== pb.stage) return;
+    if (pa.growthAge < MERGE_GROW_MS || pb.growthAge < MERGE_GROW_MS) return;
     pa.merging = true;
     pb.merging = true;
     this.mergeQueue.push([pa, pb]);
@@ -619,7 +638,7 @@ export class Game extends Phaser.Scene {
       if (wasDrop) {
         this.currentDrop = null;
         this.canDrop = true;
-        this.settleFrames = 0;
+        this.settleMs = 0;
       }
       this.wakePile();
       return;
@@ -627,26 +646,29 @@ export class Game extends Phaser.Scene {
 
     const next = stage + 1;
     this.addScore(STAGES[next].score, x, y);
-    // A growing circle must remain inside the jar sides and above its floor.
+    // Grow the visible art and collider together, giving neighbors time to move.
     const spawned = this.spawn(next, this.clampX(x, next),
-      Math.min(y, FLOOR_Y - FLOOR_H / 2 - STAGES[next].radius), vx * 0.4, vy * 0.4, 0);
-    const sx = spawned.img.scaleX;
-    const sy = spawned.img.scaleY;
-    spawned.img.setScale(sx * 0.55, sy * 0.55);
-    this.tweens.add({
-      targets: spawned.img,
-      scaleX: sx,
-      scaleY: sy,
-      duration: 220,
-      ease: "Back.out",
-    });
+      Math.min(y, FLOOR_Y - FLOOR_H / 2 - STAGES[next].radius), vx * 0.4, vy * 0.4, 0, true);
     this.beep(300 + next * 80);
     if (wasDrop) {
       this.currentDrop = spawned;
       this.canDrop = false;
-      this.settleFrames = 0;
+      this.settleMs = 0;
     }
     this.wakePile();
+  }
+
+  private growPieces(dt: number): void {
+    for (const p of this.pieces.values()) {
+      if (p.merging || p.growthAge >= MERGE_GROW_MS) continue;
+      p.growthAge = Math.min(MERGE_GROW_MS, p.growthAge + dt);
+      p.physics.setAwake().setScale(mergeScale(p.growthAge));
+      this.fitSprite(p.img, p.stage, mergeScale(p.growthAge));
+      const { min, max } = (p.physics.body as unknown as MatterBody).bounds;
+      const dx = Math.max(0, 88 - min.x) - Math.max(0, max.x - 632);
+      const dy = -Math.max(0, max.y - 1118);
+      if (dx || dy) p.physics.setPosition(p.physics.x + dx, p.physics.y + dy);
+    }
   }
 
   private destroyPiece(p: Piece): void {
@@ -665,7 +687,7 @@ export class Game extends Phaser.Scene {
     }
   }
 
-  private tickSettle(): void {
+  private tickSettle(dt: number): void {
     if (this.canDrop || this.currentDrop === null) {
       if (this.currentDrop === null && !this.canDrop) {
         this.canDrop = true;
@@ -674,18 +696,18 @@ export class Game extends Phaser.Scene {
     }
     const p = this.currentDrop;
     if (!this.pieces.has(p.id) || p.merging) {
-      this.settleFrames = 0;
+      this.settleMs = 0;
       return;
     }
     if (this.isResting(p)) {
-      this.settleFrames += 1;
-      if (this.settleFrames >= SETTLE_FRAMES) {
+      this.settleMs += dt;
+      if (this.settleMs >= SETTLE_MS) {
         this.canDrop = true;
         this.currentDrop = null;
-        this.settleFrames = 0;
+        this.settleMs = 0;
       }
     } else {
-      this.settleFrames = 0;
+      this.settleMs = 0;
     }
   }
 
@@ -695,7 +717,7 @@ export class Game extends Phaser.Scene {
       if (p.merging) continue;
       if (this.time.now - p.born < 240) continue;
       if (!this.isResting(p)) continue;
-      const top = p.physics.y - STAGES[p.stage].radius;
+      const top = (p.physics.body as unknown as MatterBody).bounds.min.y;
       if (top < KILL_Y) {
         overflowing = true;
         break;
@@ -712,7 +734,7 @@ export class Game extends Phaser.Scene {
 
   private isResting(p: Piece): boolean {
     const body = p.physics.body as unknown as MatterBody | undefined;
-    if (!body) return false;
+    if (!body || p.growthAge < MERGE_GROW_MS) return false;
     if (body.isSleeping) return true;
     const sp = Math.hypot(body.velocity.x, body.velocity.y);
     return sp < SETTLE_SPEED && Math.abs(body.angularVelocity) < 0.05;
@@ -895,6 +917,13 @@ export class Game extends Phaser.Scene {
         if (action === 'qa-bird') {
           this.spawn(4, 280, 1000, 0, 0, 0);
           this.spawn(4, 425, 1000, 0, 0, 0);
+        }
+        if (action === 'qa-pile') {
+          [[0, 120, 1060], [1, 178, 1050], [2, 270, 1020], [3, 395, 1020], [4, 535, 980], [5, 340, 850], [0, 130, 500], [2, 540, 400]].forEach(([stage, x, y]) => this.spawn(stage, x, y, 0, 0, 0));
+        }
+        if (action === 'qa-hitboxes') {
+          if (!this.collisionOverlay) this.collisionOverlay = this.add.graphics().setDepth(100);
+          else this.collisionOverlay.setVisible(!this.collisionOverlay.visible);
         }
         if (action === 'qa-giant') this.spawn(MAX_STAGE, WELL_CX, 896, 0, 0, 0);
         if (action === 'qa-titan') {

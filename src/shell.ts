@@ -63,7 +63,7 @@ window.addEventListener('well:state', event => {
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('qa')) {
   const panel = document.createElement('div');
   panel.id = 'qa-panel';
-  for (const action of ['merge', 'adult', 'bird', 'giant', 'titan', 'burst', 'overflow']) {
+  for (const action of ['merge', 'adult', 'bird', 'giant', 'titan', 'burst', 'overflow', 'pile', 'hitboxes']) {
     const button = document.createElement('button');
     button.textContent = `Seed ${action}`;
     button.onclick = () => act(`qa-${action}`);

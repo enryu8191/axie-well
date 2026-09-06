@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { MIXER_CDN, mixerStageJobs, type MixerStageJob } from "./mixerAxies";
 import { STAGES, stageKey } from "./stages";
+import { bodyFits, isTorsoLayer } from './collisions';
 
 export class Boot extends Phaser.Scene {
   private jobs: MixerStageJob[] = [];
@@ -33,6 +34,13 @@ export class Boot extends Phaser.Scene {
 
   create(): void {
     if (this.failed) return;
+    const egg = this.textures.get(stageKey(0)).getSourceImage() as HTMLImageElement;
+    const eggCanvas = document.createElement('canvas');
+    eggCanvas.width = egg.width;
+    eggCanvas.height = egg.height;
+    eggCanvas.getContext('2d')!.drawImage(egg, 0, 0);
+    this.textures.remove(stageKey(0));
+    this.textures.addCanvas(stageKey(0), trimCanvas(eggCanvas, 0));
     for (const job of this.jobs) {
       this.textures.addCanvas(stageKey(job.stage), this.stamp(job));
     }
@@ -56,18 +64,22 @@ export class Boot extends Phaser.Scene {
     canvas.height = 1024;
     const ctx = canvas.getContext("2d");
     if (!ctx) return canvas;
+    const torso = document.createElement('canvas');
+    torso.width = canvas.width;
+    torso.height = canvas.height;
     for (const layer of job.layers) {
       if (!this.textures.exists(layer.imagePath)) continue;
       const src = this.textures.get(layer.imagePath).getSourceImage() as CanvasImageSource;
       ctx.drawImage(src, layer.px, layer.py);
+      if (isTorsoLayer(layer.imagePath)) torso.getContext('2d')!.drawImage(src, layer.px, layer.py);
     }
-    return trimCanvas(canvas);
+    return trimCanvas(canvas, job.stage, torso);
   }
 }
 
-function trimCanvas(src: HTMLCanvasElement, pad = 12): HTMLCanvasElement {
+function alphaBounds(src: HTMLCanvasElement) {
   const ctx = src.getContext("2d");
-  if (!ctx) return src;
+  if (!ctx) throw new Error('Canvas unavailable');
   const { width, height } = src;
   const data = ctx.getImageData(0, 0, width, height).data;
   let minX = width;
@@ -83,7 +95,15 @@ function trimCanvas(src: HTMLCanvasElement, pad = 12): HTMLCanvasElement {
       if (y > maxY) maxY = y;
     }
   }
-  if (maxX < minX) return src;
+  return maxX < minX ? null : { minX, minY, maxX, maxY };
+}
+
+function trimCanvas(src: HTMLCanvasElement, stage: number, torso = src, pad = 12): HTMLCanvasElement {
+  const bounds = alphaBounds(src);
+  if (!bounds) return src;
+  const core = alphaBounds(torso) ?? bounds;
+  let { minX, minY, maxX, maxY } = bounds;
+  const { width, height } = src;
   minX = Math.max(0, minX - pad);
   minY = Math.max(0, minY - pad);
   maxX = Math.min(width - 1, maxX + pad);
@@ -91,6 +111,16 @@ function trimCanvas(src: HTMLCanvasElement, pad = 12): HTMLCanvasElement {
   const w = maxX - minX + 1;
   const h = maxY - minY + 1;
   const side = Math.max(w, h);
+  const bodyWidth = core.maxX - core.minX + 1;
+  const bodyHeight = core.maxY - core.minY + 1;
+  const diameter = Math.max(bodyWidth, bodyHeight);
+  bodyFits.set(stage, {
+    originX: ((core.minX + core.maxX) / 2 - minX + Math.floor((side - w) / 2)) / side,
+    originY: ((core.minY + core.maxY) / 2 - minY + Math.floor((side - h) / 2)) / side,
+    diameter: diameter / side,
+    widthRatio: bodyWidth / diameter,
+    heightRatio: bodyHeight / diameter,
+  });
   const out = document.createElement("canvas");
   out.width = side;
   out.height = side;

@@ -3,6 +3,7 @@ import './garden.css';
 import Phaser from "phaser";
 import { Boot } from "./game/Boot";
 import { Game } from "./game/Game";
+import { PHYSICS_STEP_MS } from "./game/collisions";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -19,7 +20,8 @@ const config: Phaser.Types.Core.GameConfig = {
     matter: {
       gravity: { x: 0, y: 1.45 },
       enableSleeping: true,
-      positionIterations: 8,
+      runner: { delta: PHYSICS_STEP_MS, maxUpdates: 6 },
+      positionIterations: 10,
       velocityIterations: 6,
       constraintIterations: 2,
       debug: false,

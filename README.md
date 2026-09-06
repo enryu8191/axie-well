@@ -44,7 +44,11 @@ Use a current browser. An internet connection is needed on first load for offici
 
 `npm test` checks weighted drop variety, milestone unlocks, the three-repeat limit, preview stability, queue reset, and the ten-tier size ladder. Run the dev server and open `/?qa` for colliding eggs, teens, Birds, Dusk pairs, titans, and a settled overflow piece. The panel shows current and queued drops, unlocked pool, score, tier, pieces, pause, and game-over state. QA controls are excluded from production builds; QA scores use separate browser storage.
 
-Check Space/click drops, Bird-to-Bug growth, Dusk-to-Dawn growth, titan burst, overflow, restart, mute, pause, and phone layout. Visual squash is applied only to rendered images; physics circles keep their configured radius. Larger merged bodies are clamped inside the side walls and above the floor.
+Check Space/click drops, Bird-to-Bug growth, Dusk-to-Dawn growth, titan burst, overflow, restart, mute, pause, and phone layout. Collision bodies are 32-vertex ellipses fitted to each official torso layer (and the egg silhouette). The sprite origin is aligned with its torso center; decorative wings, horns, and tails do not snag the pile. Each tier keeps its maximum collision radius. Rotated body bounds determine overflow.
+
+Matter runs fixed 120 Hz steps with a six-step catch-up cap and ten position iterations. Low restitution and moderate friction help the pile settle. Small bevels close the lower jar corners. Merged art and colliders grow together from 80% to full size over 180 ms, clamped to the side walls and floor; a growing Axie cannot merge again until this finishes. Ongoing contacts are checked so a touching pair can chain once growth completes. The next drop unlocks after 260 ms of rest, independent of display frame rate.
+
+`npm test` also simulates fast small-on-giant impacts, mixed piles at the walls/floor, and growth beneath a resting neighbor using Phaser's bundled Matter engine. In `/?qa`, Seed pile creates a mixed stack and Seed hitboxes toggles a visible collider overlay.
 
 ## Sources and AI assistance
 

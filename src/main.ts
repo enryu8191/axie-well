@@ -1,4 +1,5 @@
 import './shell';
+import './garden.css';
 import Phaser from "phaser";
 import { Boot } from "./game/Boot";
 import { Game } from "./game/Game";

@@ -17,6 +17,9 @@ export class Boot extends Phaser.Scene {
     this.load.on('loaderror', () => this.fail());
     this.load.on('progress', (progress: number) => window.dispatchEvent(new CustomEvent('well:loading', { detail: Math.round(progress * 100) })));
     this.load.setCORS("anonymous");
+    this.load.image('garden-background', 'ui/garden-background.png');
+    this.load.image('garden-panel', 'ui/garden-panel.png');
+    this.load.image('garden-button', 'ui/garden-button.png');
     this.load.image({ key: stageKey(0), url: "axie/egg.png", xhrSettings: { responseType: 'blob', timeout: 15000 } });
     const seen = new Set<string>();
     for (const job of this.jobs) {

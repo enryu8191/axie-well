@@ -13,7 +13,17 @@ Grown Axies are built at runtime with the official 2D mixer:
 
 The plant-class egg is original feed art. Mixer part PNGs are loaded from Sky Mavis CDN, not vendored.
 
-The egg and unused legacy sprite files are inherited unchanged from the source repository. No new AI-generated character art was added. The active game uses only the egg and the runtime mixer stages. Background, interface, growth trail, and particle effects are drawn with code. Audio is synthesized with the browser Web Audio API.
+The egg and unused legacy sprite files are inherited unchanged from the source repository. No new AI-generated character art was added. The active game uses only the egg and the runtime mixer stages. Audio is synthesized with the browser Web Audio API.
+
+## Garden interface artwork
+
+The built-in OpenAI image generator created these decorative assets on 2026-09-06:
+
+- `public/ui/garden-background.png`: illustrated garden environment used by the page and Phaser scene.
+- `public/ui/garden-panel.png`: transparent stone-and-leaf frame used for scores, next-piece previews, growth trails, menus, and the game-over card. Nine-slice rendering preserves its corners at different sizes.
+- `public/ui/garden-button.png`: transparent green action-button artwork used behind HTML labels and the in-game Restart control.
+
+These are original decorative illustrations, separate from the official Axie character assets. All labels, scores, hit areas, physics walls, and merge particles remain code-driven. Generation prompts are recorded in `docs/art-prompts.md`.
 
 Typography: DM Sans, Fredoka and Nunito from Google Fonts (SIL Open Font License); system-font fallbacks are included. Dependencies remain pinned by `package-lock.json`. The mixer package declares MIT for code; that declaration does not grant general rights to Axie media. This build retains the source project's Axie Vibeathon/Sky Mavis-approved-program use scope.
 

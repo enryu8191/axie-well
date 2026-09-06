@@ -6,6 +6,8 @@ Each grown stage has a distinct official [`@axieinfinity/mixer`](https://www.npm
 
 Portrait well. Canvas is 720x1280. Phaser Scale.FIT + CENTER_BOTH letterboxes on a landscape monitor.
 
+The garden environment, HUD frames, and action buttons use generated illustration assets. Scores and labels remain live text; the official Axie mixer sprites and game physics are unchanged. See `ASSETS.md` and `docs/art-prompts.md` for the artwork provenance.
+
 ## Play online (GitHub Pages)
 
 Public link after deploy: **https://enryu8191.github.io/axie-well/**

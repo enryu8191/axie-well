@@ -169,31 +169,10 @@ export class Game extends Phaser.Scene {
   }
 
   private drawWorld(): void {
+    const garden = this.textures.get('garden-background').getSourceImage();
+    this.add.image(WIDTH / 2, HEIGHT / 2, 'garden-background')
+      .setDisplaySize(HEIGHT * garden.width / garden.height, HEIGHT).setDepth(0);
     const g = this.add.graphics().setDepth(0);
-
-    g.fillStyle(0xa8d8f0, 1);
-    g.fillRect(0, 0, WIDTH, HEIGHT);
-    g.fillStyle(0xcfeaf8, 1);
-    g.fillEllipse(WELL_CX, 310, 820, 520);
-
-    g.fillStyle(0xf7ecd8, 0.78);
-    g.fillEllipse(WELL_CX, 8, 980, 248);
-
-    const cloud = (x: number, y: number, s: number) => {
-      g.fillStyle(0xffffff, 0.7);
-      g.fillEllipse(x, y, 110 * s, 42 * s);
-      g.fillEllipse(x - 34 * s, y + 6 * s, 64 * s, 30 * s);
-      g.fillEllipse(x + 36 * s, y + 4 * s, 70 * s, 32 * s);
-    };
-    cloud(84, 48, 1);
-    cloud(640, 42, 0.92);
-
-    g.fillStyle(0x6fbe5e, 1);
-    g.fillEllipse(WELL_CX, 1264, 1080, 340);
-    g.fillStyle(0x8ed67a, 1);
-    g.fillEllipse(WELL_CX - 70, 1228, 620, 200);
-    g.fillStyle(0x5eaa52, 0.7);
-    g.fillEllipse(WELL_CX + 140, 1284, 540, 180);
 
     const innerLeft = WELL_CX - WELL_W / 2;
     const innerRight = WELL_CX + WELL_W / 2;
@@ -300,7 +279,7 @@ export class Game extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(30);
 
-    this.drawPill(g, 102, pillY, 168, 58, 0xf7ecd8, 0xd9c4a0);
+    this.gardenPanel(102, pillY, 168, 68).setDepth(29);
     this.add
       .text(102, pillY - 12, "SCORE", {
         fontFamily: FONT_UI,
@@ -320,7 +299,7 @@ export class Game extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(30);
 
-    this.drawPill(g, 292, pillY, 196, 58, 0xf7ecd8, 0xb8e8c8);
+    this.gardenPanel(292, pillY, 196, 68).setDepth(29);
     this.add
       .text(292, pillY - 12, "YOUR AXIE", {
         fontFamily: FONT_UI,
@@ -340,7 +319,7 @@ export class Game extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(30);
 
-    this.drawPill(g, 458, pillY, 116, 58, 0xf7ecd8, 0xa8d8f0);
+    this.gardenPanel(458, pillY, 116, 68).setDepth(29);
     this.add
       .text(458, pillY - 16, "NEXT", {
         fontFamily: FONT_UI,
@@ -359,6 +338,7 @@ export class Game extends Phaser.Scene {
 
     this.addRestartButton(624, pillY, 30, 152, 58);
 
+    this.gardenPanel(WELL_CX, 1200, 640, 100).setDepth(29);
     STAGES.forEach((st, i) => {
       const x = 136 + i * 112;
       this.growthIcons.push(this.add.image(x, 1190, stageKey(i)).setDisplaySize(50, 50).setDepth(30).setAlpha(i === 0 ? 1 : 0.35));
@@ -377,19 +357,12 @@ export class Game extends Phaser.Scene {
       .setAlpha(0.72);
   }
 
-  private drawPill(
-    g: Phaser.GameObjects.Graphics,
-    cx: number,
-    cy: number,
-    w: number,
-    h: number,
-    fill: number,
-    stroke: number,
-  ): void {
-    g.fillStyle(fill, 1);
-    g.fillRoundedRect(cx - w / 2, cy - h / 2, w, h, h / 2);
-    g.lineStyle(5, stroke, 1);
-    g.strokeRoundedRect(cx - w / 2, cy - h / 2, w, h, h / 2);
+  private gardenPanel(x: number, y: number, w: number, h: number): Phaser.GameObjects.NineSlice {
+    const source = this.textures.get('garden-panel').getSourceImage();
+    const scale = Math.min(h, 240) / source.height;
+    const corner = Math.round(source.width * 0.18);
+    return this.add.nineslice(x, y, 'garden-panel', undefined,
+      w / scale, h / scale, corner, corner, corner, corner).setScale(scale);
   }
 
   private fitHudNext(): void {
@@ -398,17 +371,9 @@ export class Game extends Phaser.Scene {
 
   private buildOverlay(): void {
     const veil = this.add.rectangle(WIDTH / 2, HEIGHT / 2, WIDTH, HEIGHT, 0xb8e4f5, 0.55);
-    const card = this.add.graphics();
     const cw = 560;
     const ch = 380;
-    const cx = WIDTH / 2 - cw / 2;
-    const cy = HEIGHT / 2 - ch / 2 - 10;
-    card.fillStyle(0xf7ecd8, 1);
-    card.fillRoundedRect(cx, cy, cw, ch, 48);
-    card.lineStyle(8, 0xd9c4a0, 1);
-    card.strokeRoundedRect(cx, cy, cw, ch, 48);
-    card.fillStyle(0xffffff, 0.28);
-    card.fillEllipse(WIDTH / 2, cy + 70, 360, 90);
+    const card = this.gardenPanel(WIDTH / 2, HEIGHT / 2 - 10, cw, ch);
     this.ovTitle = this.add
       .text(WIDTH / 2, HEIGHT / 2 - 86, "YOUR AXIE reached Egg", {
         fontFamily: FONT_DISPLAY,
@@ -439,20 +404,18 @@ export class Game extends Phaser.Scene {
     w = 148,
     h = 56,
   ): Phaser.GameObjects.Container {
-    const bg = this.add.graphics();
+    const bg = this.add.image(0, 0, 'garden-button').setDisplaySize(w + 12, h * 1.4);
     const paint = (fill: number) => {
-      bg.clear();
-      bg.fillStyle(fill, 1);
-      bg.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
-      bg.lineStyle(5, 0x5eaa52, 1);
-      bg.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+      bg.setTint(fill);
     };
-    paint(0x8ed67a);
+    paint(0xffffff);
     const txt = this.add
       .text(0, 0, "Restart", {
         fontFamily: FONT_DISPLAY,
         fontSize: h >= 60 ? "26px" : "20px",
-        color: INK,
+        color: '#fffbea',
+        stroke: '#365b16',
+        strokeThickness: 3,
         fontStyle: "700",
       })
       .setOrigin(0.5);
@@ -460,8 +423,8 @@ export class Game extends Phaser.Scene {
     c.setSize(w, h);
     c.setInteractive({ useHandCursor: true });
     c.setData("ui", "restart");
-    c.on("pointerover", () => paint(0x7ec86a));
-    c.on("pointerout", () => paint(0x8ed67a));
+    c.on("pointerover", () => paint(0xe3f3bd));
+    c.on("pointerout", () => paint(0xffffff));
     c.on("pointerdown", () => this.restart());
     return c;
   }

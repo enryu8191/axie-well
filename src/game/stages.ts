@@ -26,8 +26,8 @@ export const STAGES: readonly StageDef[] = [
   },
   {
     id: 1,
-    name: "hatchling",
-    title: "Plant hatchling",
+    name: "bud",
+    title: "Plant bud",
     label: "H",
     radius: 34,
     fill: 0x99ff73,
@@ -37,8 +37,8 @@ export const STAGES: readonly StageDef[] = [
   },
   {
     id: 2,
-    name: "kid",
-    title: "Aquatic kid",
+    name: "pearl",
+    title: "Aquatic pearl",
     label: "K",
     radius: 46,
     fill: 0x00b8ff,
@@ -48,8 +48,8 @@ export const STAGES: readonly StageDef[] = [
   },
   {
     id: 3,
-    name: "teen",
-    title: "Beast teen",
+    name: "ember",
+    title: "Beast ember",
     label: "T",
     radius: 60,
     fill: 0xfdb014,
@@ -59,8 +59,8 @@ export const STAGES: readonly StageDef[] = [
   },
   {
     id: 4,
-    name: "adult",
-    title: "Bird adult",
+    name: "bloom",
+    title: "Bird bloom",
     label: "A",
     radius: 78,
     fill: 0xff78b4,
@@ -68,7 +68,7 @@ export const STAGES: readonly StageDef[] = [
     ink: "#2d4a38",
     score: 270,
   },
-  { id: 5, name: 'elder', title: 'Bug elder', label: 'B', radius: 98,
+  { id: 5, name: 'blossom', title: 'Bug blossom', label: 'B', radius: 98,
     fill: 0xff433e, stroke: 0xdc1244, ink: '#60322b', score: 810 },
   { id: 6, name: 'guardian', title: 'Reptile guardian', label: 'R', radius: 120,
     fill: 0x9967fb, stroke: 0x7d4ce7, ink: '#47325e', score: 2430 },
@@ -76,7 +76,7 @@ export const STAGES: readonly StageDef[] = [
     fill: 0xf6fbff, stroke: 0x929292, ink: '#3b4557', score: 7290 },
   { id: 8, name: 'colossus', title: 'Dusk colossus', label: 'D', radius: 174,
     fill: 0x007181, stroke: 0x005372, ink: '#124c54', score: 21870 },
-  { id: 9, name: 'titan', title: 'Dawn titan', label: '★', radius: 208,
+  { id: 9, name: 'titan', title: 'Dawn titan', label: 'â˜…', radius: 208,
     fill: 0xffff8d, stroke: 0xffd200, ink: '#71571c', score: 65610 },
 ];
 

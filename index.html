@@ -4,46 +4,50 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#edf1e5" />
-  <meta name="description" content="A tiny garden. A little gravity. Drop, merge, and raise your Axie in The Well." />
+  <meta name="description" content="A tiny garden. A little gravity. Drop, match, and climb ten merge tiers in The Well." />
   <title>The Well — Axie Merge Garden</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23d6e8ad'/%3E%3Cellipse cx='32' cy='36' rx='18' ry='22' fill='%2386ad57'/%3E%3Ccircle cx='26' cy='33' r='3' fill='%232f4435'/%3E%3Ccircle cx='38' cy='33' r='3' fill='%232f4435'/%3E%3C/svg%3E" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="./" aria-label="The Well home"><span class="brand-mark">w.</span><span>The Well<small>AN AXIE MERGE GARDEN</small></span></a>
-    <div class="header-note"><span class="live-dot"></span>A little gravity. A lot of growing.</div>
+    <div class="header-note"><span class="live-dot"></span>A little gravity. A lot of merging.</div>
     <nav aria-label="Game controls"><button id="music" aria-pressed="true">Music on</button><button id="mute" aria-pressed="true" aria-label="Sound effects on">SFX on</button><button id="pause">Pause</button><button id="help" aria-label="How to play">?</button></nav>
   </header>
   <main class="layout">
     <aside class="left-rail">
-      <span class="eyebrow">DROP. MERGE. GROW.</span>
+      <span class="eyebrow">DROP. MATCH. MERGE.</span>
       <h1>Small eggs.<br>Big possibilities.</h1>
-      <p>Find a little room.<br>Grow something wonderful.</p>
+      <p>Find a little room.<br>Climb all ten merge tiers.</p>
       <div class="score-card"><span class="eyebrow">YOUR SCORE</span><strong id="score">0</strong><div class="personal-best"><span>Personal best</span><b id="best">0</b></div></div>
-      <div class="tip"><span class="tip-leaf">✦</span><div><b>Small drops. Giant Axies.</b><p>Random drops from the start.<br>Grow bigger Axies to unlock<br>more drop varieties.</p></div></div>
+      <div class="tip"><span class="tip-leaf">✦</span><div><b>Small drops. Giant score.</b><p>Match equal tiers.<br>Higher merges unlock<br>more drop varieties.</p></div></div>
       <div class="status-line" id="status" aria-live="polite">Your garden is almost ready.</div>
     </aside>
     <section class="game-frame" aria-label="Axie merge puzzle">
-      <div id="game" role="application" aria-label="Move with arrow keys, drop with Space, pause with P, restart with R" tabindex="0"></div>
-      <div id="welcome" class="modal-layer"><div class="welcome-card">
-        <span class="eyebrow">WELCOME TO YOUR LITTLE GARDEN</span>
-        <img class="hero-axie" data-stage="9" src="axie/egg.png" alt="Dawn titan Axie" />
-        <h2>Grow a giant.</h2><p>Drop a surprise. Match a pair.<br>Discover all 10 Axie tiers.</p>
+      <div id="game" role="application" aria-label="Move with arrow keys, drop with Space, use Keeper skill with E, cancel with Escape, pause with P, restart with R" tabindex="0"></div>
+      <div id="welcome" class="modal-layer keeper-select"><div class="welcome-card">
+        <div class="keeper-select__intro"><span class="eyebrow">CHOOSE YOUR GARDEN KEEPER</span><h2>Who’s on watch?</h2><p>Pick a guest Keeper and use their game-specific skill to shape the pile.</p></div>
+        <div id="keeper-grid" class="keeper-grid" role="radiogroup" aria-label="Garden Keepers"></div>
         <div class="mini-steps"><span>01 <b>Aim</b></span><span>02 <b>Drop</b></span><span>03 <b>Merge</b></span></div>
         <button class="primary" id="start" disabled>Growing your garden… 0%</button>
-        <p class="fine-print">Keep your Axies below the red line.</p>
+        <p class="fine-print">Free guest Keepers. No wallet needed. Skills are specific to this game; they do not earn native AXP.</p>
       </div></div>
-      <div id="paused" class="modal-layer" hidden><div class="welcome-card compact"><span class="eyebrow">TAKE A BREATHER</span><h2>Room to rest.</h2><p>Your garden will be right here.</p><button id="resume" class="primary">Keep growing</button></div></div>
+      <section id="keeper-hud" class="keeper-hud" hidden aria-label="Garden Keeper skill">
+        <div class="keeper-hud__identity"><img id="keeper-hud-image" src="axie/egg.png" alt="" /><span><small id="keeper-class">PLANT KEEPER</small><strong id="keeper-name">Garden Keeper</strong></span></div>
+        <div class="keeper-hud__skill"><div class="keeper-hud__skill-copy"><span><b id="keeper-skill-name">Skill</b><small id="keeper-charge-label">Ready</small></span><div class="keeper-charge" role="progressbar" aria-label="Keeper skill charge" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1"><i id="keeper-charge-fill"></i></div><p id="keeper-hint">Merge equal tiers to recharge.</p></div><div id="keeper-swap-preview" class="keeper-swap-preview" hidden><span><small>NOW</small><img id="keeper-current-image" src="axie/egg.png" alt="Current drop" /></span><i>⇄</i><span><small>NEXT</small><img id="keeper-next-image" src="axie/egg.png" alt="Next drop" /></span></div><button id="keeper-skill" class="keeper-skill-button" type="button"><span>Use skill</span><kbd>E</kbd></button></div>
+        <button id="choose-keeper" class="keeper-change" type="button">New garden / Change Keeper</button>
+      </section>
+      <div id="paused" class="modal-layer" hidden><div class="welcome-card compact"><span class="eyebrow">TAKE A BREATHER</span><h2>Room to rest.</h2><p>Your garden will be right here.</p><button id="resume" class="primary">Keep merging</button></div></div>
     </section>
     <aside class="right-rail">
-      <div class="next-card"><span class="eyebrow">UP NEXT</span><div class="next-orbit"><img id="next-image" src="axie/egg.png" alt="Next drop: egg" /></div><h3 id="next-name">Plant egg</h3><p id="drop-pool">Random pool: egg → kid</p></div>
-      <div class="growth-heading"><span class="eyebrow">THE GROWTH JOURNEY</span><span>10 tiers</span></div>
+      <div class="next-card"><span class="eyebrow">UP NEXT</span><div class="next-orbit"><img id="next-image" src="axie/egg.png" alt="Next drop: egg" /></div><h3 id="next-name">Plant egg</h3><p id="drop-pool">Random pool: egg → pearl</p></div>
+      <div class="growth-heading"><span class="eyebrow">THE MERGE LADDER</span><span>10 tiers</span></div>
       <ol class="evolution" aria-label="All 10 merge tiers"></ol>
-      <div class="burst-note">✦ Bird is just the beginning.<br>Merge two Dawn titans for <b><span id="burst-points">200,000</span> points</b> and room to grow.</div>
+      <div class="burst-note">✦ The top tier can still merge.<br>Match two Dawn titans for <b><span id="burst-points">200,000</span> points</b> and more room.</div>
     </aside>
   </main>
   <footer><span>Made for Axie Vibeathon <span class="footer-dot">·</span> Official Axie mixer art</span><span>← → aim <span class="key">Space</span> drop <span class="key">R</span> restart</span></footer>
-  <dialog id="instructions"><button id="close-help" class="close" aria-label="Close instructions">×</button><span class="eyebrow">A LITTLE GUIDE</span><h2>Room for giants.</h2><ol><li><b>Aim & drop.</b> Move your mouse or use A/D or arrow keys. Click or press Space. On touch, drag to aim and release. The Axie above the jar is your current drop; UP NEXT shows the following one.</li><li><b>A little surprise.</b> Start with random eggs, hatchlings, and Aquatic kids. Reach Bird to add Beast drops, Reptile to add Bird drops, and Dusk to add Bug drops. Small Axies stay more common; no more than three identical drops in a row.</li><li><b>Grow through 10 tiers.</b> Matching pairs merge into bigger Axies, all the way to the giant Dawn titan. Two titans burst for 200,000 points.</li><li><b>Keep it low.</b> A settled Axie above the red line for one second ends the run. Merges within half a second build a score multiplier.</li></ol><p class="fine-print">Best score and sound preference stay in this browser.</p><button id="help-done" class="primary">Got it</button></dialog>
+  <dialog id="instructions"><button id="close-help" class="close" aria-label="Close instructions">×</button><span class="eyebrow">A LITTLE GUIDE</span><h2>Room for giants.</h2><ol><li><b>Aim & drop.</b> Move your mouse or use A/D or arrow keys. Click or press Space. On touch, drag to aim and release. The Axie above the jar is your current drop; UP NEXT shows the following one.</li><li><b>A little surprise.</b> Start with random drops from the first three merge tiers. Reaching higher tiers adds more drop varieties. Small pieces stay more common; generated drops avoid streaks longer than three. Swapping can change their order.</li><li><b>Merge through 10 tiers.</b> Matching pairs combine into the next puzzle tier, all the way to the Dawn titan. Two titans burst for 200,000 points.</li><li><b>Use your Keeper.</b> Equal-tier merges recharge the Keeper skill. Press E or use the skill button when it is ready. Plant: tap a glowing egg, or press E again to choose the egg nearest your aim. Aquatic: swap your current and next drops. Bird: aim left or right before using Gust. Cancel a target with Escape or the same button. Each Keeper starts fully charged.</li><li><b>Keep it low.</b> A settled piece above the red line for one second ends the run. Merges within half a second build a score multiplier.</li></ol><p class="fine-print">Keepers are guest builds with game-specific skills based on their class and parts. They are not owned Axies and do not earn native AXP. Best score and sound preference stay in this browser.</p><button id="help-done" class="primary">Got it</button></dialog>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

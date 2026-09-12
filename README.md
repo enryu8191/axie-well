@@ -1,6 +1,6 @@
 # The Well
 
-A browser drop-and-merge puzzle for Axie Infinity Vibeathon. Aim, release a random small Axie, and merge matching pairs through 10 increasingly large tiers. Bird adult is the midpoint; the final Dawn titan fills over three quarters of the jar's width. Two titans burst to clear room. Includes a separate next-piece preview, instruction screen, pause/resume, sound toggle, saved personal best, growth tracker, and touch/keyboard controls.
+A browser drop-and-merge puzzle for Axie Infinity Vibeathon. Aim, release a random small Axie, and merge matching pairs through 10 increasingly large tiers. Bird bloom is the midpoint; the final Dawn titan fills over three quarters of the jar's width. Two titans burst to clear room. Includes a separate next-piece preview, instruction screen, pause/resume, sound toggle, saved personal best, growth tracker, and touch/keyboard controls.
 
 Each grown tier has a distinct official [`@axieinfinity/mixer`](https://www.npmjs.com/package/@axieinfinity/mixer) identity: green Plant, blue Aquatic, orange Beast, pink Bird, red Bug, purple Reptile, white Mech, deep teal Dusk, and golden Dawn. Classes, colors, body shapes, and parts differ per tier. This is a puzzle progression, not a claim that canonical Axies change class as they age. The egg is the original feed art.
 
@@ -26,10 +26,18 @@ npm install && npm run dev
 
 Open http://localhost:3000
 
+## Garden Keepers
+
+Choose one of four free guest builds before playing. Plant Sprout upgrades a settled egg; Aquatic Ripple swaps the current and next drops; Aquatic Lookout trades slower recharge for a second upcoming preview; Bird Breeze nudges the pile toward your aim. Official parts distinguish the builds and determine local skill rules. Every skill starts charged and recharges through natural merges. No wallet, tokens, ownership verification, or native AXP is required.
+
+See [Keeper rules and product vision](docs/garden-keeper.md) and [Axie trait research](docs/axie-core-research.md).
+
 ## Controls
 
 - Move: mouse / A D / arrow keys
 - Drop: click and release / Space. On touch, drag to aim and release to drop.
+- Keeper skill: E or the skill button. Plant: tap a glowing egg, or press E again for the egg nearest your aim. Escape cancels targeting.
+- Keeper selection: arrow keys, Home/End, or tap a card. New garden / Change Keeper resets the run.
 - Restart: R, or the Restart button on the HUD and the game-over overlay
 - Pause/resume: P or the top toolbar. Switching away from the window pauses the game.
 - Sound: M or the top toolbar. Best score and sound preference are saved in this browser; storage is optional.

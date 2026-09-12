@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { MIXER_CDN, mixerStageJobs, type MixerStageJob } from "./mixerAxies";
+import { MIXER_CDN, mixerStageJobs, mixerKeeperJobs, type MixerStageJob } from "./mixerAxies";
 import { STAGES, stageKey } from "./stages";
 import { bodyFits, isTorsoLayer } from './collisions';
 
@@ -13,7 +13,7 @@ export class Boot extends Phaser.Scene {
 
   preload(): void {
     this.cameras.main.setBackgroundColor("#b8e4f5");
-    try { this.jobs = mixerStageJobs(); }
+    try { this.jobs = [...mixerStageJobs(), ...mixerKeeperJobs()]; }
     catch { this.fail(); return; }
     this.load.on('loaderror', () => this.fail());
     this.load.on('progress', (progress: number) => window.dispatchEvent(new CustomEvent('well:loading', { detail: Math.round(progress * 100) })));
@@ -42,13 +42,16 @@ export class Boot extends Phaser.Scene {
     this.textures.remove(stageKey(0));
     this.textures.addCanvas(stageKey(0), trimCanvas(eggCanvas, 0));
     for (const job of this.jobs) {
-      this.textures.addCanvas(stageKey(job.stage), this.stamp(job));
+      this.textures.addCanvas(job.keeperId ? `keeper-${job.keeperId}` : stageKey(job.stage), this.stamp(job));
     }
     const images = STAGES.map(({ id: i }) => {
       if (i === 0) return 'axie/egg.png';
       const source = this.textures.get(stageKey(i)).getSourceImage() as HTMLCanvasElement | HTMLImageElement;
       return source instanceof HTMLCanvasElement ? source.toDataURL() : source.src;
     });
+    const keepers = Object.fromEntries(this.jobs.filter(j => j.keeperId).map(j => [j.keeperId!,
+      (this.textures.get(`keeper-${j.keeperId}`).getSourceImage() as HTMLCanvasElement).toDataURL()]));
+    window.dispatchEvent(new CustomEvent('well:keepers', { detail: keepers }));
     window.dispatchEvent(new CustomEvent('well:ready', { detail: images }));
     this.scene.start("Game");
   }

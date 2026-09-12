@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { KeeperCharge, keeperById, KEEPERS } from "./keepers";
 import { GardenAudio } from "./audio";
 import { bodyFits, ellipseVertices, cornerVertices, mergeScale, MERGE_GROW_MS, SETTLE_MS, PIECE_MATERIAL } from "./collisions";
 import { readPreferences, savePreferences } from "./storage";
@@ -37,6 +38,7 @@ type MatterBody = {
   velocity: { x: number; y: number };
   angularVelocity: number;
   isSleeping: boolean;
+  isStatic: boolean;
   position: { x: number; y: number };
   vertices: { x: number; y: number }[];
   bounds: { min: { x: number; y: number }; max: { x: number; y: number } };
@@ -58,6 +60,12 @@ export class Game extends Phaser.Scene {
   private pieces = new Map<number, Piece>();
   private nextId = 1;
   private score = 0;
+  private keeperId = 'plant';
+  private keeperCharge = new KeeperCharge(4);
+  private keeperTargeting = false;
+  private skillSettling = false;
+  private keeperNotice = '';
+  private targetRings?: Phaser.GameObjects.Graphics;
   private bestReached = 0;
   private drops!: DropQueue;
   private chain = 0;
@@ -100,7 +108,13 @@ export class Game extends Phaser.Scene {
     super("Game");
   }
 
-  create(data: { playing?: boolean } = {}): void {
+  create(data: { playing?: boolean; keeperId?: string } = {}): void {
+    this.keeperId = keeperById(data.keeperId ?? this.keeperId).id;
+    this.keeperCharge = new KeeperCharge(keeperById(this.keeperId).chargeCost);
+    this.keeperTargeting = false;
+    this.skillSettling = false;
+    this.keeperNotice = '';
+    this.targetRings = this.add.graphics().setDepth(24);
     this.collisionOverlay = undefined;
     this.pieces = new Map();
     this.nextId = 1;
@@ -158,6 +172,11 @@ export class Game extends Phaser.Scene {
         for (const v of vertices.slice(1)) this.collisionOverlay.lineTo(v.x, v.y);
         this.collisionOverlay.closePath().strokePath();
       }
+    }
+    this.targetRings?.clear();
+    if (this.keeperTargeting) {
+      this.targetRings?.lineStyle(3, 0x549e31, 0.95);
+      for (const p of this.eligibleEggs()) this.targetRings?.strokeCircle(p.physics.x, p.physics.y, STAGES[0].radius + 9);
     }
     if (!this.started || this.paused) return;
     this.steerPreview(dt);
@@ -323,7 +342,7 @@ export class Game extends Phaser.Scene {
 
     this.gardenPanel(292, pillY, 196, 68).setDepth(29);
     this.add
-      .text(292, pillY - 12, "YOUR AXIE", {
+      .text(292, pillY - 12, "TOP TIER", {
         fontFamily: FONT_UI,
         fontSize: "18px",
         color: MUTE,
@@ -396,7 +415,7 @@ export class Game extends Phaser.Scene {
     const ch = 380;
     const card = this.gardenPanel(WIDTH / 2, HEIGHT / 2 - 10, cw, ch);
     this.ovTitle = this.add
-      .text(WIDTH / 2, HEIGHT / 2 - 86, "YOUR AXIE reached Egg", {
+      .text(WIDTH / 2, HEIGHT / 2 - 86, "Largest merge: Egg", {
         fontFamily: FONT_DISPLAY,
         fontSize: "36px",
         color: INK,
@@ -453,7 +472,7 @@ export class Game extends Phaser.Scene {
   private bindInput(): void {
     const kb = this.input.keyboard;
     if (kb) {
-      kb.addCapture("SPACE,LEFT,RIGHT,A,D,R,P,M,ENTER");
+      kb.addCapture("SPACE,LEFT,RIGHT,A,D,R,P,M,ENTER,E,ESC");
       kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
       this.leftKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
       this.rightKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
@@ -464,6 +483,8 @@ export class Game extends Phaser.Scene {
       kb.on("keydown-M", () => this.toggleMute());
       kb.on("keydown-ENTER", () => { if (!this.started) this.begin(); });
       kb.on("keydown-SPACE", () => this.tryDrop());
+      kb.on("keydown-E", (event: KeyboardEvent) => { if (!event.repeat) this.useKeeperSkill(true); });
+      kb.on("keydown-ESC", () => this.cancelKeeperTarget());
     }
     this.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
       document.getElementById('game')?.focus({ preventScroll: true });
@@ -472,6 +493,12 @@ export class Game extends Phaser.Scene {
       const hits = this.input.hitTestPointer(p);
       if (hits.some((o) => o.getData("ui") === "restart")) return;
       if (this.over || p.worldY < WALL_TOP || p.worldY > FLOOR_Y) return;
+      if (this.keeperTargeting) {
+        this.pointerArmed = false;
+        const egg = this.eligibleEggs().find(piece => this.hitsPiece(piece, p.worldX, p.worldY));
+        if (egg) this.sproutEgg(egg);
+        return;
+      }
       this.previewX = this.clampX(p.worldX, this.nextDropStage());
       this.pointerArmed = true;
     });
@@ -541,8 +568,9 @@ export class Game extends Phaser.Scene {
 
   private tryDrop(): void {
     if (this.over || this.restarting || !this.started || this.paused) return;
-    if (!this.canDrop) return;
+    if (!this.canDrop || this.keeperTargeting) return;
     if (this.time.now < this.ignoreUntil) return;
+    this.keeperNotice = '';
     this.unlockAudio();
     const stage = this.nextDropStage();
     const x = this.clampX(this.previewX, stage);
@@ -620,6 +648,7 @@ export class Game extends Phaser.Scene {
   private resolveMerge(a: Piece, b: Piece): void {
     if (!this.pieces.has(a.id) || !this.pieces.has(b.id)) return;
 
+    this.keeperCharge.earn();
     const x = (a.physics.x + b.physics.x) * 0.5;
     const y = (a.physics.y + b.physics.y) * 0.5;
     const va = this.vel(a.physics);
@@ -690,6 +719,16 @@ export class Game extends Phaser.Scene {
   }
 
   private tickSettle(dt: number): void {
+    if (this.skillSettling) {
+      this.settleMs = this.boardResting() ? this.settleMs + dt : 0;
+      if (this.settleMs >= SETTLE_MS) {
+        this.skillSettling = false;
+        this.canDrop = true;
+        this.currentDrop = null;
+        this.settleMs = 0;
+      }
+      return;
+    }
     if (this.canDrop || this.currentDrop === null) {
       if (this.currentDrop === null && !this.canDrop) {
         this.canDrop = true;
@@ -837,7 +876,11 @@ export class Game extends Phaser.Scene {
     const best = this.livingBest();
     this.hudAxie.setText(best < 0 ? "Egg" : titleCase(STAGES[best].name));
     this.growthIcons.forEach((icon, i) => icon.setAlpha(i <= this.bestReached ? 1 : 0.35));
+    const keeper = keeperById(this.keeperId);
     const state = {
+      keeperId: keeper.id, keeperCharge: this.keeperCharge.value, keeperCost: this.keeperCharge.cost,
+      keeperReady: this.skillAvailable(), keeperTargeting: this.keeperTargeting,
+      keeperHint: this.keeperHint(), afterNext: keeper.extraPreview ? this.drops.afterNext : null,
       score: this.score, best: this.preferences.best, stage: titleCase(STAGES[this.bestReached].name),
       stageId: this.bestReached, current: this.drops.current, next: this.drops.next,
       poolMax: dropWeights(this.bestReached).length - 1,
@@ -856,13 +899,14 @@ export class Game extends Phaser.Scene {
 
   private gameOver(): void {
     if (this.over) return;
+    this.cancelKeeperTarget();
     this.over = true;
     this.canDrop = false;
     this.matter.world.pause();
     this.audio.pause();
     this.audio.play('end');
     const reached = titleCase(STAGES[this.bestReached].name);
-    this.ovTitle.setText(`Garden full!\nYour Axie reached ${reached}`);
+    this.ovTitle.setText(`Garden full!\nLargest merge: ${reached}`);
     this.ovScore.setText(`Score ${this.score}  ·  Best ${this.preferences.best}`);
     this.overlay.setVisible(true);
     this.refreshHud();
@@ -871,10 +915,11 @@ export class Game extends Phaser.Scene {
   private restart(): void {
     if (this.restarting) return;
     this.restarting = true;
-    this.scene.restart({ playing: true });
+    this.scene.restart({ playing: true, keeperId: this.keeperId });
   }
 
   private begin(): void {
+    if (this.started || this.restarting || this.over) return;
     this.started = true;
     this.paused = false;
     this.ignoreUntil = this.time.now + INPUT_GRACE_MS;
@@ -886,6 +931,7 @@ export class Game extends Phaser.Scene {
 
   private togglePause(): void {
     if (!this.started || this.over) return;
+    this.cancelKeeperTarget();
     this.paused = !this.paused;
     this.pointerArmed = false;
     if (this.paused) { this.matter.world.pause(); this.tweens.pauseAll(); this.audio.pause(); }
@@ -897,6 +943,104 @@ export class Game extends Phaser.Scene {
     this.preferences.muted = !this.preferences.muted;
     this.syncAudio();
     savePreferences(this.preferences);
+    this.refreshHud();
+  }
+
+  private boardResting(): boolean {
+    return this.mergeQueue.length === 0 && [...this.pieces.values()].every(p => !p.merging && this.isResting(p));
+  }
+
+  private eligibleEggs(): Piece[] {
+    return [...this.pieces.values()].filter(p => p.stage === 0 && !p.merging && this.isResting(p)
+      && !(p.physics.body as unknown as MatterBody).isStatic);
+  }
+
+  private skillAvailable(): boolean {
+    if (!this.started || this.paused || this.over || this.restarting || !this.canDrop
+      || !this.keeperCharge.ready || this.time.now < this.ignoreUntil || !this.boardResting()) return false;
+    const ability = keeperById(this.keeperId).ability;
+    if (ability === 'sprout') return this.eligibleEggs().length > 0;
+    if (ability === 'swap') return this.drops.current !== this.drops.next;
+    return [...this.pieces.values()].some(p => !(p.physics.body as unknown as MatterBody).isStatic);
+  }
+
+  private keeperHint(): string {
+    if (!this.started) return 'Choose a free guest Keeper. Start with one charged skill.';
+    if (this.over) return 'Garden full. Start a new garden to try another Keeper.';
+    if (this.paused) return 'Resume your garden to use a skill.';
+    if (this.keeperTargeting) return 'Tap a glowing egg, or press E again for the egg nearest your aim. Esc cancels.';
+    if (!this.canDrop || !this.boardResting()) return 'Let the pile settle before using your skill.';
+    if (!this.keeperCharge.ready) return `${this.keeperCharge.cost - this.keeperCharge.value} more merges to recharge.`;
+    const ability = keeperById(this.keeperId).ability;
+    if (ability === 'sprout' && !this.eligibleEggs().length) return 'Drop an egg first, then use Sprout to upgrade it.';
+    if (ability === 'swap' && this.drops.current === this.drops.next) return 'Both drops match. Keep your charge for a useful swap.';
+    if (ability === 'gust' && this.pieces.size === 0) return 'Add pieces first, then aim left or right and use Gust.';
+    return this.keeperNotice || (ability === 'gust' ? 'Aim left or right, then press Gust or E.' : 'Skill ready. Press the button or E.');
+  }
+
+  private cancelKeeperTarget(): void {
+    this.keeperTargeting = false;
+    this.pointerArmed = false;
+    this.targetRings?.clear();
+  }
+
+  private hitsPiece(p: Piece, x: number, y: number): boolean {
+    const fit = bodyFits.get(p.stage)!;
+    const dx = x - p.physics.x, dy = y - p.physics.y;
+    const c = Math.cos(p.physics.rotation), s = Math.sin(p.physics.rotation);
+    return ((dx * c + dy * s) / (STAGES[p.stage].radius * fit.widthRatio)) ** 2
+      + ((-dx * s + dy * c) / (STAGES[p.stage].radius * fit.heightRatio)) ** 2 <= 1.1;
+  }
+
+  private useKeeperSkill(keyboard = false): void {
+    if (!this.skillAvailable()) return;
+    this.pointerArmed = false;
+    const ability = keeperById(this.keeperId).ability;
+    if (ability === 'sprout') {
+      if (this.keeperTargeting && keyboard) {
+        const egg = this.eligibleEggs().sort((a, b) => Math.abs(a.physics.x - this.previewX) - Math.abs(b.physics.x - this.previewX))[0];
+        if (egg) this.sproutEgg(egg);
+      } else this.keeperTargeting = true;
+    } else if (ability === 'swap') {
+      if (!this.drops.swap()) return;
+      this.keeperCharge.spend();
+      this.syncNextDropVisuals();
+      this.keeperNotice = 'Drops swapped. Your future queue is unchanged.';
+      this.audio.play('merge', 1);
+    } else {
+      this.keeperCharge.spend();
+      const direction = this.previewX < WELL_CX ? -1 : 1;
+      this.wakePile();
+      for (const p of this.pieces.values()) {
+        if ((p.physics.body as unknown as MatterBody).isStatic) continue;
+        p.physics.setVelocity(direction * 2.8 * Math.sqrt(34 / STAGES[p.stage].radius), -0.65);
+      }
+      this.canDrop = false;
+      this.skillSettling = true;
+      this.settleMs = 0;
+      this.keeperNotice = direction < 0 ? 'A breeze moved the pile left.' : 'A breeze moved the pile right.';
+      this.popRing(this.previewX, 780, 0x9ddcf0);
+      this.audio.play('merge', 3);
+    }
+    this.refreshHud();
+    document.getElementById('game')?.focus({ preventScroll: true });
+  }
+
+  private sproutEgg(egg: Piece): void {
+    if (!this.keeperTargeting || !this.skillAvailable() || !this.eligibleEggs().includes(egg)) return;
+    if (!this.keeperCharge.spend()) return;
+    const x = egg.physics.x, y = egg.physics.y;
+    this.cancelKeeperTarget();
+    this.destroyPiece(egg);
+    // A skill upgrade gives no points or charge; natural merges can still follow it.
+    const grown = this.spawn(1, this.clampX(x, 1), Math.min(y, FLOOR_Y - FLOOR_H / 2 - STAGES[1].radius), 0, 0, 0, true);
+    this.currentDrop = grown;
+    this.canDrop = false;
+    this.settleMs = 0;
+    this.wakePile();
+    this.popRing(x, y, 0x99ff73);
+    this.audio.play('merge', 1);
+    this.keeperNotice = 'Your egg became a Plant bud. Find its match!';
     this.refreshHud();
   }
 
@@ -915,6 +1059,22 @@ export class Game extends Phaser.Scene {
   private connectShell(): void {
     const onAction = (event: Event) => {
       const action = (event as CustomEvent<string>).detail;
+      if (typeof action !== 'string') return;
+      if (action.startsWith('keeper:') && !this.started && !this.restarting) {
+        const id = action.slice(7);
+        if (KEEPERS.some(k => k.id === id)) {
+          this.keeperId = id;
+          this.keeperCharge = new KeeperCharge(keeperById(id).chargeCost);
+          this.keeperNotice = '';
+          this.refreshHud();
+        }
+      }
+      if (action === 'choose-keeper' && !this.restarting) {
+        this.restarting = true;
+        this.scene.restart({ playing: false, keeperId: this.keeperId });
+      }
+      if (action === 'skill') this.useKeeperSkill();
+      if (action === 'cancel-skill') this.cancelKeeperTarget();
       if (action === 'start') this.begin();
       if (action === 'restart') this.restart();
       if (action === 'pause') this.togglePause();
@@ -923,8 +1083,9 @@ export class Game extends Phaser.Scene {
       if (import.meta.env.DEV && new URLSearchParams(location.search).has('qa')) {
         if (action === 'qa-merge') {
           this.spawn(0, 330, 900, 0, 0, 0);
-          this.spawn(0, 372, 900, 0, 0, 0);
+          this.spawn(0, 360, 900, 0, 0, 0);
         }
+        if (action === 'qa-egg') this.spawn(0, WELL_CX, 1050, 0, 0, 0);
         if (action === 'qa-adult') {
           this.spawn(3, 300, 930, 0, 0, 0);
           this.spawn(3, 406, 930, 0, 0, 0);

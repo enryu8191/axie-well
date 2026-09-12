@@ -28,6 +28,7 @@ export interface MixerLayer {
 
 export interface MixerStageJob {
   stage: number;
+  keeperId?: string;
   layers: MixerLayer[];
 }
 
@@ -97,8 +98,26 @@ function stageCombo(appearance: Appearance): Map<string, string> {
 }
 
 export function mixerStageJobs(): MixerStageJob[] {
+  return buildJobs(GROWTH);
+}
+
+export function mixerKeeperJobs(): MixerStageJob[] {
+  const specs = [
+    { id: 'plant', source: 1, parts: { tail: 8 } },
+    { id: 'aquatic-flow', source: 2, parts: { tail: 4, eyes: 4 } },
+    { id: 'aquatic-scout', source: 2, parts: { tail: 2, eyes: 2 } },
+    { id: 'bird', source: 4, parts: { back: 8 } },
+  ];
+  return specs.map((spec, i) => {
+    const base = GROWTH.find(a => a.stage === spec.source)!;
+    const job = buildJobs([{ ...base, stage: 100 + i, evolved: false, parts: { ...base.parts, ...spec.parts } }])[0];
+    return { ...job, keeperId: spec.id };
+  });
+}
+
+function buildJobs(appearances: Appearance[]): MixerStageJob[] {
   initMixer();
-  return GROWTH.map(appearance => {
+  return appearances.map(appearance => {
     const { stage, color } = appearance;
     const combo = stageCombo(appearance);
     const variant = genesData.items.colors.find(c => c.key === color);
